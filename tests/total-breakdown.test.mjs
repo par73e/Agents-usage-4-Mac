@@ -28,3 +28,19 @@ test('legacy-only and empty scopes keep unknown usage honest',()=>{
   assert.deepEqual(totalBreakdown(result,'effort').series.map(s=>s.key),['estimated']);
   result.total_buckets=[];result.totals={total_tokens:0,estimated_tokens:0};assert.deepEqual(totalBreakdown(result,'effort').series,[]);
 });
+
+test('the tooltip names each series exactly as the legend does',()=>{
+  const efforts={high:55,medium:110,xhigh:20,ultra:5};
+  const shown=tokenSeries('effort',efforts,[]);
+  const tooltip=orderedTooltipSeries('effort',shown);
+  // The common levels lead, and nothing is left out or renamed.
+  assert.deepEqual(tooltip.slice(0,2).map(s=>s.key),['medium','high']);
+  assert.deepEqual([...tooltip].sort((a,b)=>a.key<b.key?-1:1).map(s=>s.key),[...shown].sort((a,b)=>a.key<b.key?-1:1).map(s=>s.key));
+  for(const item of tooltip){const legend=shown.find(s=>s.key===item.key);assert.equal(item.label,legend.label);assert.equal(item.color,legend.color);}
+  assert.deepEqual(tooltip.map(s=>s.label),['medium','high','xhigh','ultra']);
+  // A source without the common levels keeps its own order and names.
+  const sparse=tokenSeries('effort',{max:3},[]);
+  assert.deepEqual(orderedTooltipSeries('effort',sparse),sparse);
+  const composition=tokenSeries('composition',{},[]);
+  assert.equal(orderedTooltipSeries('composition',composition),composition);
+});

@@ -18,10 +18,10 @@ export function tokenSeries(mode, efforts, buckets) {
     : [...C_SERIES, ...(buckets.some(bucket => bucket.cache_unknown) ? [{ key: "cache_unknown", label: "输入 · 缓存状态未知", color: "var(--chart-8)" }] : [])];
 }
 
+// The two common levels lead the tooltip. Names stay as the legend shows them.
 export function orderedTooltipSeries(mode, series) {
   return mode === "effort" ? ["medium", "high", ...series.map(s => s.key).filter(key => !["medium", "high"].includes(key))]
-    .map(key => series.find(s => s.key === key)).filter(Boolean)
-    .map(s => ({ ...s, label: s.key === "medium" ? "Medium" : s.key === "high" ? "High" : s.label })) : series;
+    .map(key => series.find(s => s.key === key)).filter(Boolean) : series;
 }
 
 export function totalBreakdown(result, mode) {

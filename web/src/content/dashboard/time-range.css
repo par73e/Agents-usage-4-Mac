@@ -1,15 +1,15 @@
 .usage-range-control { position:relative; padding-bottom:20px; }
 .usage-range-sr { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-.usage-range-heading { display:flex; align-items:center; gap:12px; font-size:12px; color:var(--secondary); margin-bottom:10px; }
+.usage-range-heading { display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text); font-weight:500; margin-bottom:10px; }
 .usage-range-mode { color:var(--accent); font-size:11px; }
-.usage-range-line { display:flex; gap:14px; align-items:center; }
+.usage-range-line { position:relative; display:flex; gap:14px; align-items:center; }
 .usage-range-line .usage-range-input { flex:1; min-width:0; font-variant-numeric:tabular-nums; }
-.usage-range-zone { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--secondary); }
-.usage-range-zone select { max-width:210px; height:42px; padding:0 11px; border-radius:8px; border:1px solid var(--border-strong); background:var(--control); color:var(--text); font:inherit; }
+.usage-range-zone { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text); }
+.usage-range-zone select { max-width:210px; height:42px; padding:0 34px 0 11px; border-radius:8px; border:1px solid var(--border-strong); background:var(--control) no-repeat right 12px center / 14px 14px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23898d99' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4.5 6.5 3.5 3.5 3.5-3.5'/%3E%3C/svg%3E"); appearance:none; color:var(--text); font:inherit; }
 .usage-range-help { display:flex; justify-content:space-between; gap:12px; font-size:11px; color:var(--secondary); margin-top:11px; }
 .usage-range-panel { display:flex; background:var(--surface-raised); color:var(--text); font-variant-numeric:tabular-nums; }
 .usage-range-shortcuts { width:230px; flex:none; padding:15px 10px; border-right:1px solid var(--border); }
-.usage-range-section-title,.usage-range-recent summary { font-size:11px; color:var(--secondary); padding:3px 9px 8px; }
+.usage-range-section-title,.usage-range-recent summary { font-size:11px; color:var(--text); font-weight:500; padding:3px 9px 8px; }
 .usage-range-preset-list { display:grid; grid-template-columns:1fr 1fr; gap:2px; }
 .usage-range-preset-list button { white-space:nowrap; }
 .usage-range-shortcuts button { display:block; width:100%; text-align:left; background:none; border:0; border-radius:6px; color:var(--text); cursor:pointer; font:inherit; font-size:12px; padding:8px 9px; }
@@ -17,14 +17,15 @@
 .usage-range-shortcuts button:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
 .usage-range-recent { margin-top:12px; padding-top:11px; border-top:1px solid var(--border); }
 .usage-range-recent summary { cursor:pointer; }
-.usage-range-recent>div { max-height:185px; overflow:auto; scrollbar-color:var(--border-strong) transparent; }
-.usage-range-recent button span { display:block; font-size:11px; }
-.usage-range-recent button small { display:block; color:var(--secondary); font-size:10px; margin-top:4px; line-height:1.45; }
+/* Up to five recent ranges, each shown whole. A list cut part-way through a row reads as a mistake, and one that scrolls inside a panel is easy to miss. */
+.usage-range-recent button { padding:6px 9px; }
+.usage-range-recent button span { display:block; font-size:11px; line-height:16px; }
+.usage-range-recent button small { display:block; color:var(--secondary); font-size:10px; margin-top:3px; line-height:14px; overflow-wrap:anywhere; }
 .usage-range-calendar { min-width:0; }
 .usage-range-endpoints { display:flex; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); }
 .usage-range-endpoints button { flex:1; display:flex; align-items:center; gap:8px; min-width:0; padding:8px 10px; border:1px solid var(--border); border-radius:7px; background:var(--control); color:var(--text); font:inherit; font-size:12px; cursor:pointer; }
 .usage-range-endpoints button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
-.usage-range-endpoints button span { font-size:11px; color:var(--secondary); }
+.usage-range-endpoints button span { font-size:11px; color:var(--text); }
 .usage-range-endpoints button strong { font-size:12px; font-weight:500; }
 .usage-date-endpoint { position:relative; cursor:grab; touch-action:none; }
 .usage-date-handle { position:absolute; bottom:-7px; height:12px; min-width:12px; padding:0 2px; border-radius:3px; line-height:12px; font-size:8px; background:var(--accent); color:var(--accent-foreground); cursor:grab; touch-action:none; }
@@ -32,25 +33,39 @@
 .usage-date-handle-1 { right:-3px; }
 .usage-range-control[data-endpoint-dragging] .usage-range-calendar { cursor:grabbing; user-select:none; }
 .usage-range-drag-invalid { color:var(--negative)!important; }
-.usage-range-panel-hint { padding:2px 0; color:var(--secondary); font-size:11px; }
-.usage-range-footer { padding:8px 0; line-height:1.6; }
-.usage-range-confirm { display:block; margin:8px 0 0 auto; border:0; border-radius:6px; padding:7px 12px; font:inherit; font-size:12px; color:var(--accent-foreground); background:var(--accent); cursor:pointer; }
+/* Action bar under the shortcuts and the calendar: where the change applies, a hint, and Apply. */
+.usage-range-shell { min-width:0; background:var(--surface-raised); color:var(--text); }
+.usage-range-footer { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; padding:10px 12px 12px; border-top:1px solid var(--border); background:var(--surface-raised); line-height:1.6; }
+.usage-range-scope { display:flex; align-items:center; gap:8px; flex:none; font-size:12px; color:var(--text); white-space:nowrap; }
+.usage-range-panel-hint { flex:1 1 180px; min-width:0; padding:0; color:var(--secondary); font-size:11px; }
+.usage-range-confirm { flex:none; margin:0 0 0 auto; border:0; border-radius:6px; padding:7px 12px; font:inherit; font-size:12px; color:var(--accent-foreground); background:var(--accent); cursor:pointer; }
+.usage-range-confirm:hover { filter:brightness(1.08); }
+.usage-range-confirm:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .usage-range-error { margin:10px 0 0; font-size:12px; color:var(--negative); }
-.usage-range-popup { z-index:50; max-width:calc(100vw - 32px); }
+/* The panel always opens right under the input, in line with it. The component's own placing could put it over the heading, or above the top of the page on a window with little room, where it could not be reached. A window too short for it scrolls it inside. On a narrow window it slides left to the window's edge. */
+.usage-range-popup { z-index:50; max-width:calc(100vw - 32px); top:calc(100% + 8px)!important; left:var(--usage-range-shift, 0px)!important; max-height:calc(100dvh - 72px); overflow-y:auto; }
 @media (max-width:800px) {
   .usage-range-panel { flex-direction:column; }
   .usage-range-shortcuts { width:100%; border-right:0; border-bottom:1px solid var(--border); padding:9px 10px; }
   .usage-range-preset-list { grid-template-columns:repeat(4,1fr); }
   .usage-range-recent { margin-top:5px; padding-top:5px; }
-  .usage-range-recent>div { max-height:82px; display:flex; gap:4px; }
-  .usage-range-recent button { width:190px; flex:none; }
+  /* A narrow panel has no room for a list down the side. The ranges sit side by side in columns of one width, on as many rows as they need, so that none is cut off at an edge. */
+  .usage-range-recent>div { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:4px; }
+  .usage-range-recent button { width:auto; min-width:0; }
 }
 @media (max-width:650px) {
-  .usage-range-popup { position:fixed!important; inset:64px 12px auto!important; transform:none!important; max-height:calc(100dvh - 80px); overflow:auto; scrollbar-color:var(--border-strong) transparent; }
+  .usage-range-popup { position:fixed!important; inset:64px 12px auto!important; transform:none!important; max-width:none; max-height:calc(100dvh - 80px); overflow:auto; scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
+  /* On a phone the panel is a sheet that scrolls. Where a change applies comes first, because the shortcuts under it apply at once; the hint stays with Apply, under the calendar it describes. */
+  .usage-range-shell { display:flex; flex-direction:column; }
+  .usage-range-footer { display:contents; }
+  .usage-range-scope { order:-1; padding:10px 12px 12px; border-bottom:1px solid var(--border); }
+  .usage-range-panel-hint { flex:none; padding:10px 12px 6px; border-top:1px solid var(--border); }
+  .usage-range-confirm { margin:0 12px 12px auto; }
   .usage-range-line { flex-wrap:wrap; gap:10px; }
   .usage-range-line .usage-range-input { width:100%; flex:auto; }
   .usage-range-zone { width:100%; justify-content:space-between; }
   .usage-range-zone select { max-width:none; width:calc(100% - 40px); }
+  .usage-range-panel-hint { text-wrap:balance; }
   .usage-range-help { flex-wrap:wrap; gap:5px; }
 }
 @media (max-width:480px) {

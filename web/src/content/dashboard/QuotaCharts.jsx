@@ -100,6 +100,17 @@ function QuotaWindow({ window, result, zoom, sourceRows, threshold, showGapBackg
     {view.events.length > 0 && <details className="usage-quota-events" data-reviewed-rows><summary>观察到 {view.events.length} 次额度恢复</summary><div className="usage-quota-event-table"><table><thead><tr><th>首次观察到</th><th>剩余额度变化</th><th>可能发生区间</th></tr></thead><tbody>{[...view.events].reverse().map(event => <tr key={event.id}><td><strong>{event.kind === "full_recovery" ? "恢复满额" : "额度回升"}</strong><span>{dateLabel(event.upper_timestamp, result.timezone, true)}</span></td><td>{event.remaining_before}% → {event.remaining_after}%</td><td>{dateLabel(event.lower_timestamp, result.timezone, true)} ～ {dateLabel(event.upper_timestamp, result.timezone, true)}<small>观测推断 · 原因未知{event.scheduled_reset_changed ? " · 预计重置时间也发生变化" : ""}</small></td></tr>)}</tbody></table></div></details>}
   </DataComponent>;
 }
+// Shown for sources whose local records carry no quota snapshots. It is plain
+// copy rather than a data component: there are no rows behind it to inspect.
+export function QuotaUnavailable({ provider }) {
+  return <section className="usage-quota-section" aria-label="账户额度变化">
+    <div className="usage-unavailable-card" role="note" aria-label="账户剩余额度">
+      <div className="usage-unavailable-head"><span className="usage-unavailable-title">账户剩余额度</span><span className="usage-unavailable-badge">未提供</span></div>
+      <p>{provider.label} 的本地记录不含账户额度快照，这里不做展示，也不会从 Token 用量换算百分比。</p>
+    </div>
+  </section>;
+}
+
 export function QuotaCharts({ result, zoom, sourceRows }) {
   const quota = result.quota;
   const windows = (quota?.windows || []).filter(window => window.window_minutes !== 30 * 1440);

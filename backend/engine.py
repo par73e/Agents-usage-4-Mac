@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from contextlib import ExitStack
 from datetime import datetime, timedelta, timezone
+import bisect
 import hashlib
 import json
 from pathlib import Path
@@ -21,7 +22,91 @@ FIELDS=['input_tokens','cached_input_tokens','output_tokens','reasoning_output_t
 class QueryError(ValueError):
     pass
 
+
+def query_usage(engine, body):
+    """Time-bucketed usage for any local source that shares the Codex row schema.
+
+    ``engine`` supplies a re-entrant ``lock``, ``generation``, ``rows``,
+    ``legacy_rows``, ``quota_rows`` and ``status``. Codex, Claude Code and
+    Antigravity all resolve through this one path, so bucketing, totals and
+    session rules cannot drift apart between platforms.
+    """
+    with engine.lock:
+        if body.get('generation') and body['generation']!=engine.generation:raise QueryError('日志索引已更新，请重新载入页面。')
+        zone=parse_zone(body.get('timezone','Asia/Shanghai'))
+        start=parse_minute(body['start'].replace('T',' '),zone);end=parse_minute(body['end'].replace('T',' '),zone)
+        if end<=start:raise QueryError('结束时间必须晚于开始时间。')
+        gran=body.get('granularity','6h')
+        if gran not in ['1h','6h','12h','day']:raise QueryError('不支持这个分组粒度。')
+        # The switch removes identified compaction calls everywhere, sessions included.
+        scoped=[r for r in engine.rows if start.timestamp()*1000<=r['timestamp_ms']<end.timestamp()*1000 and (body.get('include_compaction',True) or not r['compaction'])]
+        start_ms=int(start.timestamp()*1000);end_ms=int(end.timestamp()*1000)
+        legacy=[r for r in engine.legacy_rows if overlaps(r,start_ms,end_ms)]
+        options={}
+        for r in scoped:
+            if r['total_tokens']<=0:continue
+            item=options.setdefault(r['thread_id'],{'id':r['thread_id'],'title':r['title'],'kind':r['kind'],'tokens':0,'responses':0,'first':r['timestamp'],'latest':r['timestamp']})
+            item['tokens']+=r['total_tokens'];item['responses']+=1
+            # First and last response let the picker tell untitled sessions apart.
+            item['first']=min(item['first'],r['timestamp']);item['latest']=max(item['latest'],r['timestamp'])
+            if r.get('project'):item['project']=r['project']
+        for r in legacy:
+            amount=allocated(r,start_ms,end_ms)
+            if amount<=0:continue
+            item=options.setdefault(r['thread_id'],{'id':r['thread_id'],'title':r['title'],'kind':r['kind'],'tokens':0,'responses':0})
+            item['tokens']+=amount;item['estimated_tokens']=item.get('estimated_tokens',0)+amount
+        selection=body.get('sessions',{'mode':'all'});mode=selection.get('mode','all')
+        if mode not in ['all','explicit']:raise QueryError('无效的会话选择。')
+        supplied=set(selection.get('ids',[]));selected=set(options) if mode=='all' else supplied&set(options)
+        scoped=[r for r in scoped if r['thread_id'] in selected]
+        legacy=[r for r in legacy if r['thread_id'] in selected and allocated(r,start_ms,end_ms)>0]
+        bins=make_bins(start,end,zone,gran)
+        models={};totals=Counter()
+        edges=[b['start_ms'] for b in bins]
+        for r in scoped:
+            model=models.get(r['model'])
+            if model is None:
+                model={'name':r['model'],'tokens':0,'responses':0,'efforts':Counter(),'buckets':[{'id':b['id'],'tokens':0,'responses':0,'efforts':Counter(),'cached':0,'uncached':0,'cache_unknown':0,'output':0} for b in bins],'response_ids':[]}
+                models[r['model']]=model
+            model['tokens']+=r['total_tokens'];model['responses']+=1;model['efforts'][r['effort']]+=r['total_tokens'];model['response_ids'].append(r['response_id'])
+            # Bucket edges are not uniform: the first and last are clipped to the
+            # query and DST days differ in length, so place each row by its edge.
+            i=bisect.bisect_right(edges,r['timestamp_ms'])-1
+            if i<0 or i>=len(bins):continue
+            bucket=model['buckets'][i];bucket['tokens']+=r['total_tokens'];bucket['responses']+=1;bucket['efforts'][r['effort']]+=r['total_tokens'];bucket['output']+=r['output_tokens']
+            if r['cache_known']:bucket['cached']+=r['cached_input_tokens'];bucket['uncached']+=r['input_tokens']-r['cached_input_tokens']
+            else:bucket['cache_unknown']+=r['input_tokens']
+            for key in FIELDS:totals[key]+=r[key]
+        recorded_tokens=totals['total_tokens']
+        total_buckets=[{'id':b['id'],'tokens':0,'recorded':0,'estimated':0,'responses':0} for b in bins]
+        for model in models.values():
+            for bucket,value in zip(total_buckets,model['buckets']):
+                bucket['recorded']+=value['tokens'];bucket['responses']+=value['responses']
+        for row in legacy:
+            first=max(0,bisect.bisect_right(edges,row['start_ms'])-1)
+            for i in range(first,len(bins)):
+                b=bins[i]
+                if b['start_ms']>row['end_ms']:break
+                total_buckets[i]['estimated']+=allocated(row,b['start_ms'],b['end_ms'])
+        for bucket in total_buckets:bucket['tokens']=bucket['recorded']+bucket['estimated']
+        estimated_tokens=sum(b['estimated'] for b in total_buckets)
+        totals['total_tokens']+=estimated_tokens
+        totals['recorded_tokens']=recorded_tokens;totals['estimated_tokens']=estimated_tokens
+        warnings=[]
+        if end>datetime.now(UTC):warnings.append('区间包含未来时间，只统计已写入的记录。')
+        if engine.status.get('index_coverage',{}).get('missing_log_files'):warnings.append('部分历史日志缺失，当前结果不代表完整账户用量。')
+        for model in models.values():
+            model['efforts']=dict(model['efforts'])
+            for b in model['buckets']:b['efforts']=dict(b['efforts'])
+        return {'generation':engine.generation,'provider':engine.key,'start':start.isoformat(),'end':end.isoformat(),'timezone':zone.key,'bins':bins,'models':sorted(models.values(),key=lambda m:-m['tokens']),'totals':dict(totals),'response_count':len(scoped),'selected_ids':sorted(selected),'removed_ids':sorted(supplied-set(options)) if mode=='explicit' else [],'options':sorted(options.values(),key=lambda x:-x['tokens']),'warnings':warnings,'status':engine.status.copy(),
+                'total_buckets':total_buckets,'legacy_intervals':[dict(r,selected_tokens=allocated(r,start_ms,end_ms)) for r in legacy],
+                'quota':query_quota(engine.quota_rows,start_ms,end_ms)}
+
 class Engine:
+    key='codex'
+    session_kind='会话'
+    capabilities=['legacy_history','quota_snapshots','compaction_filter']
+
     def __init__(self, root: Path, database: Path):
         self.root=root.expanduser().resolve(); self.database=database
         database.parent.mkdir(parents=True,exist_ok=True)
@@ -228,6 +313,8 @@ class Engine:
                 row['title']=meta['title'];row['kind']=meta['kind']
             self.rows=rows; self.quota_rows=quota_rows; self.legacy_rows=legacy_rows; self.generation='v-'+hashlib.sha256(json.dumps([rows,quota_rows,legacy_rows],sort_keys=True).encode()).hexdigest()[:16]
             self.status={'generation':self.generation,'updated_at':datetime.now(UTC).isoformat(),'record_count':len(rows),'file_count':len(paths),'first':rows[0]['timestamp'] if rows else None,'latest':rows[-1]['timestamp'] if rows else None,'conflicting_responses':len(conflicts),'unknown_model':sum(r['model']=='unknown' for r in rows),'unknown_effort':sum(r['effort']=='unknown' for r in rows),'index_coverage':index_coverage(self.root),'scan':dict(stats),'scan_seconds':round(time.monotonic()-began,3)}
+            # Identity the page reads to label this source and decide which controls apply.
+            self.status.update(provider=self.key,session_kind=self.session_kind,capabilities=list(self.capabilities))
             self.status.update(legacy_interval_count=len(legacy_rows),legacy_estimated_tokens=sum(r['total_tokens'] for r in legacy_rows),legacy_conflicts=legacy_conflicts)
             self.status.update(quota_record_count=len(quota_rows),quota_latest=quota_rows[-1]['timestamp'] if quota_rows else None,quota_conflicts=quota_conflicts)
             self.status.update(quota_first=quota_rows[0]['timestamp'] if quota_rows else None,
@@ -241,71 +328,7 @@ class Engine:
         with self.lock:return {'status':self.status.copy(),'rows':list(self.rows),'quota_rows':list(self.quota_rows),'legacy_rows':list(self.legacy_rows)}
 
     def query(self,body):
-        with self.lock:
-            if body.get('generation') and body['generation']!=self.generation:raise QueryError('日志索引已更新，请重新载入页面。')
-            zone=parse_zone(body.get('timezone','Asia/Shanghai'))
-            start=parse_minute(body['start'].replace('T',' '),zone);end=parse_minute(body['end'].replace('T',' '),zone)
-            if end<=start:raise QueryError('结束时间必须晚于开始时间。')
-            gran=body.get('granularity','6h')
-            if gran not in ['1h','6h','12h','day']:raise QueryError('不支持这个分组粒度。')
-            scoped=[r for r in self.rows if start.timestamp()*1000<=r['timestamp_ms']<end.timestamp()*1000 and (body.get('include_compaction',True) or not r['compaction'])]
-            start_ms=int(start.timestamp()*1000);end_ms=int(end.timestamp()*1000)
-            legacy=[r for r in self.legacy_rows if overlaps(r,start_ms,end_ms)]
-            options={}
-            for r in scoped:
-                if r['total_tokens']<=0:continue
-                item=options.setdefault(r['thread_id'],{'id':r['thread_id'],'title':r['title'],'kind':r['kind'],'tokens':0,'responses':0})
-                item['tokens']+=r['total_tokens'];item['responses']+=1
-            for r in legacy:
-                amount=allocated(r,start_ms,end_ms)
-                if amount<=0:continue
-                item=options.setdefault(r['thread_id'],{'id':r['thread_id'],'title':r['title'],'kind':r['kind'],'tokens':0,'responses':0})
-                item['tokens']+=amount;item['estimated_tokens']=item.get('estimated_tokens',0)+amount
-            selection=body.get('sessions',{'mode':'all'});mode=selection.get('mode','all')
-            if mode not in ['all','explicit']:raise QueryError('无效的会话选择。')
-            supplied=set(selection.get('ids',[]));selected=set(options) if mode=='all' else supplied&set(options)
-            scoped=[r for r in scoped if r['thread_id'] in selected]
-            legacy=[r for r in legacy if r['thread_id'] in selected and allocated(r,start_ms,end_ms)>0]
-            bins=make_bins(start,end,zone,gran)
-            models={};totals=Counter()
-            import bisect
-            edges=[b['start_ms'] for b in bins]
-            for r in scoped:
-                model=models.get(r['model'])
-                if model is None:
-                    model={'name':r['model'],'tokens':0,'responses':0,'efforts':Counter(),'buckets':[{'id':b['id'],'tokens':0,'responses':0,'efforts':Counter(),'cached':0,'uncached':0,'cache_unknown':0,'output':0} for b in bins],'response_ids':[]}
-                    models[r['model']]=model
-                model['tokens']+=r['total_tokens'];model['responses']+=1;model['efforts'][r['effort']]+=r['total_tokens'];model['response_ids'].append(r['response_id'])
-                i=bisect.bisect_right(edges,r['timestamp_ms'])-1
-                if i<0 or i>=len(bins):continue
-                bucket=model['buckets'][i];bucket['tokens']+=r['total_tokens'];bucket['responses']+=1;bucket['efforts'][r['effort']]+=r['total_tokens'];bucket['output']+=r['output_tokens']
-                if r['cache_known']:bucket['cached']+=r['cached_input_tokens'];bucket['uncached']+=r['input_tokens']-r['cached_input_tokens']
-                else:bucket['cache_unknown']+=r['input_tokens']
-                for key in FIELDS:totals[key]+=r[key]
-            recorded_tokens=totals['total_tokens']
-            total_buckets=[{'id':b['id'],'tokens':0,'recorded':0,'estimated':0,'responses':0} for b in bins]
-            for model in models.values():
-                for bucket,value in zip(total_buckets,model['buckets']):
-                    bucket['recorded']+=value['tokens'];bucket['responses']+=value['responses']
-            for row in legacy:
-                first=max(0,bisect.bisect_right(edges,row['start_ms'])-1)
-                for i in range(first,len(bins)):
-                    b=bins[i]
-                    if b['start_ms']>row['end_ms']:break
-                    total_buckets[i]['estimated']+=allocated(row,b['start_ms'],b['end_ms'])
-            for bucket in total_buckets:bucket['tokens']=bucket['recorded']+bucket['estimated']
-            estimated_tokens=sum(b['estimated'] for b in total_buckets)
-            totals['total_tokens']+=estimated_tokens
-            totals['recorded_tokens']=recorded_tokens;totals['estimated_tokens']=estimated_tokens
-            warnings=[]
-            if end>datetime.now(UTC):warnings.append('区间包含未来时间，只统计已写入的记录。')
-            if self.status.get('index_coverage',{}).get('missing_log_files'):warnings.append('部分历史日志缺失，当前结果不代表完整账户用量。')
-            for model in models.values():
-                model['efforts']=dict(model['efforts'])
-                for b in model['buckets']:b['efforts']=dict(b['efforts'])
-            return {'generation':self.generation,'start':start.isoformat(),'end':end.isoformat(),'timezone':zone.key,'bins':bins,'models':sorted(models.values(),key=lambda m:-m['tokens']),'totals':dict(totals),'response_count':len(scoped),'selected_ids':sorted(selected),'removed_ids':sorted(supplied-set(options)) if mode=='explicit' else [],'options':sorted(options.values(),key=lambda x:-x['tokens']),'warnings':warnings,'status':self.status.copy(),
-                    'total_buckets':total_buckets,'legacy_intervals':[dict(r,selected_tokens=allocated(r,start_ms,end_ms)) for r in legacy],
-                    'quota':query_quota(self.quota_rows,start_ms,end_ms)}
+        return query_usage(self,body)
 
 def make_bins(start,end,zone,gran):
     local_start=start.astimezone(zone);local_end=end.astimezone(zone)

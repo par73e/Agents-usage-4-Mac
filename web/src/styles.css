@@ -872,10 +872,17 @@
 }
 .filter-typeahead > .typeahead { width: 188px; }
 .chevron {
+  display: inline-flex;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
   color: var(--secondary);
 }
+.chevron > svg { width:14px; height:14px; }
 .filter-trigger > .chevron {
-  flex: 0 0 auto;
+  flex: 0 0 22px;
   margin-inline-start: auto;
 }
 .popover {
