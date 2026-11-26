@@ -224,6 +224,9 @@ export function resolveDashboardUrlFilters(snapshot, localFilters = {}, state, {
 }
 
 export function serializeDashboardUrlState(snapshot, tabs = [], state = {}) {
+  // A dashboard that only reads this computer is not shared by link. Its view
+  // stays out of the address, which then holds only what is not the view.
+  if (snapshot?.localUsage === true) return new URLSearchParams();
   const { tab, filters = {} } = state;
   // Even an entirely default view must override a recipient's remembered choices.
   const parameters = new URLSearchParams({ view: "1" });

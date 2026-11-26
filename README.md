@@ -65,7 +65,7 @@
 
 程序也只读 `~/.codex/state_5.sqlite` 和 `session_index.jsonl` 补充会话名称；额度快照从日志中提取。旧格式的累计读数由 `backend/legacy_intervals.py` 差分为估算区间。模型和推理强度来自日志配置关联，并非服务端最终路由的独立证明。
 
-给维护者和 agent：先读本文件和 `DESIGN.md`；修改前端前先读 `web/AGENTS.md`。`backend/quota.py` 处理额度，`tests/` 包含后端和前端测试，`web/package-lock.json` 固定前端依赖。下方保留完整功能和统计口径说明。
+给维护者和 agent：先读本文件和 `DESIGN.md`；修改前端前先读 `web/AGENTS.md`。地址栏不写入视图参数：页面框架默认会追加 `?view=1&tab=dashboard`，这里按要求关掉了，只读本机数据的页面不再写入（`web/src/dashboard-url-state.js`，是经授权的一处框架改动，已登记在 `web/protected-runtime.json`）。`backend/quota.py` 处理额度，`tests/` 包含后端和前端测试，`web/package-lock.json` 固定前端依赖。下方保留完整功能和统计口径说明。
 
 
 本机运行的 Token 用量浏览器工具。读取现存 Codex 响应日志，不调用模型 API、不上传日志、不修改源日志。
