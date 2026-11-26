@@ -26,21 +26,59 @@ import { useDashboardAsk } from "../components/DashboardAsk.jsx";
 const numberFormatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 const tooltipPercentFormatter = new Intl.NumberFormat(undefined, { style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function TimeDateTick({ x, y, payload }) {
+function TimeDateTick({ x, y, payload, index, visibleTicksCount }) {
   const label = String(payload.value);
+  const width = useChartWidth() ?? 600;
+  // A last label close to the right-hand end would be cut off if it stayed
+  // centred on its bucket, so it ends there instead.
+  const anchor = index === visibleTicksCount - 1 && x + 20 > width - 8 ? "end" : "middle";
   const match = label.match(/^(\S+)\s+(\d{2}:\d{2})(.*)$/u);
-  return <text x={x} y={y + 11} textAnchor="middle" fill="var(--secondary)" fontSize={12} data-axis-layout="time-date">
+  return <text x={x} y={y + 11} textAnchor={anchor} fill="var(--secondary)" fontSize={12} data-axis-layout="time-date">
     <title>{label}</title>
     <tspan x={x}>{match ? match[2] + match[3] : label}</tspan>
     {match && <tspan x={x} dy={15}>{match[1]}</tspan>}
   </text>;
 }
+// How round a clock time is as a place for a label: the start of a day first,
+// then its middle, then every six, three and two hours, then any hour.
+function clockRank(time) {
+  const [hour, minute] = time.split(":").map(Number);
+  if (minute) return 6;
+  if (hour === 0) return 0;
+  if (hour === 12) return 1;
+  return hour % 6 === 0 ? 2 : hour % 3 === 0 ? 3 : hour % 2 === 0 ? 4 : 5;
+}
+const clockOf = (label) => /^(\S+)\s+(\d{2}:\d{2})(.*)$/u.exec(String(label))?.[2] ?? "00:00";
+
+// The buckets that carry a label. Labels sit a fixed number of buckets apart,
+// never more than fit, and start where they all fall at one round clock time,
+// at the start of a day where the buckets allow it. Four labels or more beat a
+// rounder cadence with fewer. Buckets that no stride lines up that way keep the
+// first bucket as their start.
+function timeLabelled(values, room) {
+  const count = values.length;
+  if (!count) return values;
+  const least = Math.max(1, Math.ceil(count / Math.max(1, room)));
+  let best = null;
+  for (let stride = least; stride <= count; stride++) {
+    for (let phase = 0; phase < Math.min(stride, count); phase++) {
+      const size = Math.ceil((count - phase) / stride);
+      let rank = 0;
+      for (let index = phase; index < count; index += stride) rank = Math.max(rank, clockRank(clockOf(values[index])));
+      const key = [size < 4 ? 1 : 0, rank, stride];
+      const better = !best || key[0] < best.key[0]
+        || key[0] === best.key[0] && (key[1] < best.key[1] || key[1] === best.key[1] && key[2] < best.key[2]);
+      if (better) best = { key, stride, phase };
+    }
+  }
+  const { stride, phase } = best;
+  return values.filter((_value, index) => index >= phase && (index - phase) % stride === 0);
+}
 
 function TimeDateXAxis({ values, ...props }) {
   const plot = usePlotArea(), width = useChartWidth() ?? 600;
   const available = plot?.width ?? width - 80;
-  const stride = Math.max(1, Math.ceil(values.length / Math.max(1, Math.floor(available / 74))));
-  return <XAxis {...props} ticks={values.filter((_value, index) => index % stride === 0)} interval={0} />;
+  return <XAxis {...props} ticks={timeLabelled(values, Math.max(1, Math.floor(available / 74)))} interval={0} />;
 }
 
 function valueFor(row, field) {
@@ -312,7 +350,8 @@ export function BarTooltip({ active = true, payload, row = payload?.[0]?.payload
       : entry.dataKey === spec.projection ? "projection"
       : previous || /previous|prior/i.test(entry.dataKey) ? "previous-bar" : "current",
       opacity: previous || /previous|prior/i.test(entry.dataKey) ? .45 : 1 })}
-    payload={fields.filter(item => item.key).map(item => ({ dataKey: item.key, name: item.label ?? item.key,
+    // A part this bar does not hold, a plain zero, is not listed.
+    payload={fields.filter(item => item.key && barValue(row, item.key) !== 0).map(item => ({ dataKey: item.key, name: item.label ?? item.key,
       value: barValue(row, item.key), payload: row,
       color: item.key === spec.target || item.key === spec.track?.max || item.key === spec.projection
         ? "var(--secondary)" : color ?? item.color ?? valueFor(row, spec.style.colorField) ?? spec.style.color ?? "var(--chart-1)" }))} />;

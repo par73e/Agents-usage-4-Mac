@@ -1,11 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, RangeSlider, SegmentedControl, SortableItem, SortableRegion, Switch, useDataApp } from "../../data-app-public.jsx";
+import { Button, RangeSlider, SegmentedControl, SortableRegion, Switch, useDataApp } from "../../data-app-public.jsx";
 import { TimeRangePicker } from "./TimeRangePicker.jsx";
+import { SessionPicker } from "./SessionPicker.jsx";
 import { QuotaCharts, QuotaUnavailable } from "./QuotaCharts.jsx";
 import { TotalUsageChart } from "./TotalUsageChart.jsx";
 import { ModelChart } from "./ModelChart.jsx";
-import { SessionPicker } from "./SessionPicker.jsx";
+import { ModelRanking } from "./ModelRanking.jsx";
+import { SessionRanking } from "./SessionRanking.jsx";
+import { AgentShare } from "./AgentShare.jsx";
 import { buildChartView } from "./chart-view.js";
+import { groupModels, modelId } from "./models.js";
+import { useAgentModels, usePreviousPeriod } from "./use-range-compare.js";
+import { quietRange } from "./range-compare.js";
+import { post } from "./api.js";
+import { short, exact } from "./format.js";
 import { localMinute, presetRange } from "./date-range.js";
 import { PROVIDERS, providerByKey, isProvider, initialView, parseStored, providerIndexes, quotaAvailable, compactionAvailable, coverageNotes, removedNotice, emptySource, emptyResult, rangeForOthers, sharedRangeNotice, syncFailureText } from "./providers.js";
 import codexIcon from "../assets/agents/codex.svg";
@@ -16,17 +24,13 @@ import "./dashboard.css";
 // Official marks; sources and licences are listed in assets/agents/SOURCES.md.
 const ICONS = { codex: codexIcon, claude: claudeIcon, antigravity: antigravityIcon };
 const EMPTY = [];
-const number = value => new Intl.NumberFormat("zh-CN").format(value ?? 0);
 function read(key) { try { return localStorage.getItem("codex-usage:" + key); } catch { return null; } }
 function write(key, value) { try { localStorage.setItem("codex-usage:" + key, value); } catch {} }
-async function post(path, body) {
-  let response;
-  // The browser reports a refused or dropped connection as a TypeError.
-  try { response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
-  catch (error) { throw error.name === "TypeError" ? new Error("无法连接本机服务") : error; }
-  const value = await response.json();
-  if (!response.ok) throw new Error(value.error || "查询失败，请重试。");
-  return value;
+// A yes-or-no setting the page remembers in this browser.
+function useStoredFlag(key, fallback) {
+  const [value, setValue] = useState(() => { const stored = read(key); return stored == null ? fallback : stored === "true"; });
+  useEffect(() => { write(key, String(value)); }, [key, value]);
+  return [value, setValue];
 }
 
 function ProviderSwitch({ value, onChange }) {
@@ -43,7 +47,7 @@ function ProviderSwitch({ value, onChange }) {
 // remounted for each source (``key``), so its range, granularity, sessions,
 // colour mode and axis are created from that source's own saved view and can
 // never carry over to another.
-function ProviderPane({ provider, index, queries, setDashboardBusy, localRefresh, onProviderChange }) {
+function ProviderPane({ provider, index, indexes, queries, setDashboardBusy, localRefresh, onProviderChange }) {
   const noun = provider.noun;
   const [view] = useState(() => initialView(parseStored(read("view:" + provider.key)), {
     timezone: read("timezone"), granularity: read("granularity"), mode: read("mode"), axis: read("axis") }, index));
@@ -54,16 +58,28 @@ function ProviderPane({ provider, index, queries, setDashboardBusy, localRefresh
   const [followNow, setFollowNow] = useState(view.followNow), [relativeKey, setRelativeKey] = useState(view.relativeKey);
   const [result, setResult] = useState(null), [loading, setLoading] = useState(true), [error, setError] = useState("");
   const [notice, setNotice] = useState(""), [zoom, setZoom] = useState([0, 0]);
+  // How models are shown and how tall their charts are: one setting for every source.
+  const [mergeVariants, setMergeVariants] = useStoredFlag("merge-models", true);
+  const [compactModels, setCompactModels] = useStoredFlag("compact-models", false);
   // Rows and provenance come from this source's own queries in the snapshot.
   const usageRows = queries[provider.usageQuery]?.rows || EMPTY;
   const legacyRows = provider.legacyQuery ? queries[provider.legacyQuery]?.rows || EMPTY : EMPTY;
   const quotaRows = provider.quotaQuery ? queries[provider.quotaQuery]?.rows || EMPTY : EMPTY;
   const caveats = queries[provider.usageQuery]?.source?.caveats || EMPTY;
-  const plotResult = useMemo(() => buildChartView(result, zoom), [result, zoom]);
+  // The visible buckets, then the models as they are shown: ways of writing one
+  // model brought together when the page is set to. ``scale`` is the tallest
+  // bar of them all, the common value axis.
+  const visible = useMemo(() => buildChartView(result, zoom), [result, zoom]);
+  const plotResult = useMemo(() => {
+    if (!visible) return null;
+    const models = groupModels(visible.models, mergeVariants);
+    return { ...visible, models, scale: Math.max(1, ...models.flatMap(model => model.buckets.map(bucket => bucket.tokens))) };
+  }, [visible, mergeVariants]);
   const plotZoom = useMemo(() => [0, Math.max(0, (plotResult?.bins.length || 1) - 1)], [plotResult]);
   const request = useRef(0), previousQuery = useRef(null), previousBins = useRef(0);
   const reconcile = localRefresh?.reconcile;
   const noRecords = index?.record_count === 0;
+  const zone = applied.timezone;
   const queryKey = JSON.stringify({ provider: provider.key, applied: { ...applied, start: followNow && relativeKey ? relativeKey : applied.start, end: followNow ? "now" : applied.end }, granularity, includeCompaction, selection });
   useEffect(() => { write("view:" + provider.key, JSON.stringify({ applied, selection, includeCompaction, followNow, relativeKey, granularity, mode, axis })); }, [provider, applied, selection, includeCompaction, followNow, relativeKey, granularity, mode, axis]);
   useEffect(() => {
@@ -101,14 +117,22 @@ function ProviderPane({ provider, index, queries, setDashboardBusy, localRefresh
     return () => { request.current++; setDashboardBusy(false); };
   }, [provider, noRecords, index?.generation, applied, granularity, includeCompaction, selection, reconcile, followNow, relativeKey, queryKey]);
   const total = result?.totals?.total_tokens || 0;
-  const zone = applied.timezone;
+  // Codex counts its compaction calls in or out by its own setting, whichever source is on screen.
+  const codexCompaction = provider.key === "codex" ? includeCompaction : parseStored(read("view:codex"))?.includeCompaction ?? true;
+  const comparison = usePreviousPeriod({ provider, generation: index?.generation, applied, includeCompaction, selection, reconcile, refreshKey: localRefresh?.checkedAt });
+  const agentModels = useAgentModels({ applied, indexes, reconcile, refreshKey: localRefresh?.checkedAt, codexCompaction });
+  // The empty stretch at one end of the range, when it is most of what is shown.
+  const quiet = useMemo(() => quietRange(result, zone), [result, zone]);
+  const showRange = range => { setApplied({ start: range.start, end: range.end, timezone: applied.timezone }); setFollowNow(false); setRelativeKey(null); };
+  // A session chosen in the ranking is left alone in the charts; chosen again, all of them come back.
+  const pickSession = id => setSelection(current => current.mode === "explicit" && current.ids.length === 1 && current.ids[0] === id ? { mode: "all", ids: [] } : { mode: "explicit", ids: [id] });
   const checkTime = localRefresh?.checkedAt ? new Date(localRefresh.checkedAt).toLocaleTimeString("zh-CN", { timeZone: zone, hour12: false }) : "正在检查";
   const stamp = value => value ? new Date(value).toLocaleString("zh-CN", { timeZone: zone, hour12: false }) : "暂无记录";
   const coverageDate = value => value ? new Date(value).toLocaleDateString("zh-CN", { timeZone: zone }) : "暂无记录";
   const includesLegacyHistory = index?.legacy_only_files > 0 && result
     && (!index.first || Date.parse(result.start) < Date.parse(index.first))
     && Date.parse(result.end) > Date.parse(index.legacy_first) && Date.parse(result.start) <= Date.parse(index.legacy_latest);
-  const notes = coverageNotes({ provider, index, result, caveats, format: { number, date: coverageDate, dateTime: stamp } });
+  const notes = coverageNotes({ provider, index, result, caveats, format: { number: exact, date: coverageDate, dateTime: stamp } });
   const empty = result && emptyResult({ provider, selection, legacyOnly: includesLegacyHistory });
   // Why the last sync did not finish, and which sources still show what they last returned.
   const syncIssue = localRefresh?.error ? syncFailureText(localRefresh.error, localRefresh.failures) : "";
@@ -126,6 +150,8 @@ function ProviderPane({ provider, index, queries, setDashboardBusy, localRefresh
     setFollowNow(value); setRelativeKey(null);
     if (value) setApplied(a => ({ ...a, end: localMinute(new Date(Date.now() + 60000), a.timezone) }));
   };
+  const modelCount = result && mergeVariants && plotResult.models.length !== result.models.length
+    ? `${plotResult.models.length} 组模型（${result.models.length} 个名称）` : result ? `${result.models.length} 个模型` : "";
   return <>
     <section className="usage-topline"><div><h1>Token 用量</h1><p>按时间、{noun}和模型查看 {provider.label} 的本地使用记录</p></div><div className="usage-sync"><span role="status" className={localRefresh?.error ? "usage-sync-error" : ""}>{localRefresh?.error ? "同步中断，请手动重试" : localRefresh?.connected ? `手动同步 · 刷新会同时读取全部 ${PROVIDERS.length} 个平台的日志` : "正在连接本机服务…"}</span><Button onClick={() => void localRefresh?.refresh()} disabled={!localRefresh || localRefresh.busy}>{localRefresh?.busy ? "正在同步…" : "立即同步"}</Button></div></section>
     {syncIssue && <p className="usage-error" role="status">{syncIssue}</p>}
@@ -148,14 +174,22 @@ function ProviderPane({ provider, index, queries, setDashboardBusy, localRefresh
     {!result && loading ? <div className="usage-loading" role="status"><span />正在汇总所选区间…</div>
       : noRecords ? <section className="usage-empty usage-source-empty" role="status"><img src={ICONS[provider.key]} alt="" width="44" height="44" /><h2>{emptySource(provider).title}</h2><p>{emptySource(provider).body}</p></section>
       : result && <div className="usage-results" aria-busy={loading || result.generation !== index?.generation} inert={result.queryKey !== queryKey ? true : undefined}>
-      <div className="usage-summary" data-reviewed-rows><div><span>所选范围总量</span><strong title={number(total)}>{number(total)}</strong><span>tokens</span></div><p>{result.selected_ids.length} / {result.options.length} 个{noun}<span>·</span>{result.models.length} 个模型<span>·</span>{number(result.response_count)} {provider.unit}</p></div>
+      <div className="usage-summary" data-reviewed-rows><div><span>所选范围总量</span><strong title={exact(total)}>{short(total)}</strong><span>tokens</span></div><p>{result.selected_ids.length} / {result.options.length} 个{noun}<span>·</span>{modelCount}<span>·</span>{exact(result.response_count)} {provider.unit}</p></div>
+      <AgentShare state={agentModels} />
       {result.bins.length > 24 && <div className="usage-zoom"><RangeSlider label="图表显示范围（不改变区间合计）" min={0} max={result.bins.length - 1} step={1} value={zoom} onChange={setZoom} formatValue={i => result.bins[Math.round(i)]?.label || ""} /><button onClick={() => setZoom([0,result.bins.length - 1])}>重置视图</button></div>}
       {plotResult.overviewStride > 1 && <p className="usage-overview-note" role="status">长区间概览：每柱合并最多 {plotResult.overviewStride} 个所选时段，悬浮可看完整起止时间。缩小上方显示范围后恢复所选粒度；区间总量不变。</p>}
-      <TotalUsageChart result={plotResult} mode={mode} provider={provider} />
-      {quotaAvailable(index) ? <QuotaCharts result={plotResult} zoom={plotZoom} sourceRows={result.quotaEvidenceRows} /> : <QuotaUnavailable provider={provider} />}
-      {result.models.length ? <SortableRegion id="usage-models" variant="freeform" className="usage-models" authoredRevision={2}>
-        {plotResult.models.map(model => <ModelChart id={"model-" + model.name.replace(/[^a-zA-Z0-9_-]/g, "-")} key={model.name + mode} model={model} result={plotResult} provider={provider} mode={mode} axis={axis} usageRows={result.evidenceRows} />)}
-      </SortableRegion> : empty && <div className="usage-empty"><h2>{empty.title}</h2><p>{empty.body}</p>{selection.mode === "explicit" && <Button onClick={() => setSelection({ mode: "all", ids: [] })}>全选当前时间候选</Button>}</div>}
+      <TotalUsageChart result={plotResult} quiet={quiet} mode={mode} provider={provider} comparison={comparison} onTrimRange={showRange} />
+      {quotaAvailable(index) ? <QuotaCharts result={plotResult} zoom={plotZoom} sourceRows={result.quotaEvidenceRows} fullRange={{ start_ms: result.bins[0]?.start_ms, end_ms: result.bins.at(-1)?.end_ms }} onShowRecorded={showRange} onResetZoom={() => setZoom([0, result.bins.length - 1])} /> : <QuotaUnavailable provider={provider} />}
+      <ModelRanking state={agentModels} provider={provider} applied={applied} merge={mergeVariants} onMergeChange={setMergeVariants} />
+      <SessionRanking options={result.options || EMPTY} selection={selection} provider={provider} onSelect={pickSession} timezone={zone} />
+      {result.models.length ? <section className="usage-models-section" aria-label="各模型用量">
+        <div className="usage-section-head"><h2>各模型用量</h2>
+          <div className="usage-section-tools"><Switch label="合并不同写法" checked={mergeVariants} onChange={setMergeVariants} size="compact" /><Switch label="紧凑显示" checked={compactModels} onChange={setCompactModels} size="compact" /></div></div>
+        <p className="usage-section-note">{mode === "effort" ? "各图的占比按整个区间的 Token 计算。" : "缓存输入和推理输出均不重复计数。"}{mergeVariants ? "名称只差来源标记的模型已合并，例如斜杠前的 imported、auto。" : ""}</p>
+        <SortableRegion id="usage-models" variant="freeform" className={compactModels ? "usage-models is-compact" : "usage-models"} authoredRevision={2}>
+          {plotResult.models.map(group => <ModelChart id={modelId(group.key)} key={group.key + mode} group={group} result={plotResult} provider={provider} mode={mode} axis={axis} compact={compactModels} merge={mergeVariants} usageRows={result.evidenceRows} />)}
+        </SortableRegion>
+      </section> : empty && <div className="usage-empty"><h2>{empty.title}</h2><p>{empty.body}</p>{selection.mode === "explicit" && <Button onClick={() => setSelection({ mode: "all", ids: [] })}>全选当前时间候选</Button>}</div>}
     </div>}
     <footer className="usage-footer"><div><span className="usage-source-dot" />{provider.sourceLabel}<span>最近检查 {checkTime} · 数据截止 {stamp(index?.latest)}</span></div>
       <details><summary>数据范围与统计说明</summary><div className="usage-coverage">{notes.map(line => <p key={line}>{line}</p>)}</div></details></footer>
@@ -176,7 +210,7 @@ export function DashboardContent() {
     workspace.current?.querySelector('[data-provider-switch] [aria-pressed="true"]')?.focus();
   }, [provider]);
   return <article className="usage-workspace" ref={workspace}>
-    <ProviderPane key={current.key} provider={current} index={indexes[current.key]} queries={queries} setDashboardBusy={setDashboardBusy} localRefresh={localRefresh}
+    <ProviderPane key={current.key} provider={current} index={indexes[current.key]} indexes={indexes} queries={queries} setDashboardBusy={setDashboardBusy} localRefresh={localRefresh}
       onProviderChange={key => { if (key !== provider) { write("provider", key); refocus.current = true; setProvider(key); } }} />
   </article>;
 }

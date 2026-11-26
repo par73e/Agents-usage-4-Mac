@@ -142,7 +142,7 @@ function measuredBlockDescriptors(descriptors, itemRefs, columns, canvasWidth) {
 export function SortableRegion({
   id,
   htmlId,
-  label = "Sortable blocks",
+  label = "可排序区块",
   variant = "stack",
   transferGroup,
   authoredRevision = 1,

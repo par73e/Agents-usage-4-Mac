@@ -192,14 +192,14 @@ export function ChartExportDialog({ component, rows, originalSize, provenance = 
     try {
       if (!navigator.clipboard?.write || typeof ClipboardItem !== "function") throw new Error("Copying images is unavailable in this browser. Download the PNG instead.");
       await navigator.clipboard.write([new ClipboardItem({ "image/png": image.blob })]);
-      setCopyStatus("Copied");
+      setCopyStatus("已复制");
     } catch (failure) {
       setCopyStatus(failure instanceof Error ? failure.message : "The image could not be copied. Download the PNG instead.");
     }
   }
   const toggle = key => value => setOptions(current => ({ ...current, [key]: value }));
 
-  return <Dialog title="Export chart" className={`chart-editor-dialog chart-export-dialog${closing ? " is-closing" : ""}`} backdropClassName="chart-editor-backdrop"
+  return <Dialog title="导出图表" className={`chart-editor-dialog chart-export-dialog${closing ? " is-closing" : ""}`} backdropClassName="chart-editor-backdrop"
     initialFocusSelector=".dialog-header" expanded onClose={dismiss}>
     <div className="chart-export-layout">
       <div className="chart-export-main">
@@ -223,8 +223,8 @@ export function ChartExportDialog({ component, rows, originalSize, provenance = 
               </div>
             </div>
           </div>
-            <button type="button" className="chart-export-resize" aria-label="Resize chart image"
-              title="Drag to resize, or use the arrow keys"
+            <button type="button" className="chart-export-resize" aria-label="调整图片大小"
+              title="拖动调整大小，或使用方向键"
               onPointerDown={event => {
                 if (event.button !== 0) return;
                 event.preventDefault();
@@ -249,7 +249,7 @@ export function ChartExportDialog({ component, rows, originalSize, provenance = 
           </div>
         </div>
         <div className="chart-export-size-controls">
-          <div className="chart-export-presets" role="group" aria-label="Image size presets">
+          <div className="chart-export-presets" role="group" aria-label="图片尺寸预设">
             {chartExportPresets.filter(item => item.id !== "custom").map(item => <button type="button" key={item.id} data-active={preset === item.id || undefined}
               title={item.width ? `${item.label} · ${item.width} × ${item.height}` : item.label}
               aria-label={item.label} aria-pressed={preset === item.id} onClick={() => choosePreset(item.id)}>
@@ -257,11 +257,11 @@ export function ChartExportDialog({ component, rows, originalSize, provenance = 
             </button>)}
             <div className="chart-export-custom-size">
               <button type="button" data-active={preset === "custom" || undefined} aria-pressed={preset === "custom"}
-                onClick={() => choosePreset("custom")}>Custom</button>
+                onClick={() => choosePreset("custom")}>自定义</button>
               {preset === "custom" && <div className="chart-export-dimensions">
-                <DimensionInput label="Width" value={size.width} minimum={320} onCommit={width => resize(width, size.height)} />
+                <DimensionInput label="宽度" value={size.width} minimum={320} onCommit={width => resize(width, size.height)} />
                 <span aria-hidden="true">×</span>
-                <DimensionInput label="Height" value={size.height} minimum={240} onCommit={height => resize(size.width, height)} />
+                <DimensionInput label="高度" value={size.height} minimum={240} onCommit={height => resize(size.width, height)} />
                 <span>px</span>
               </div>}
             </div>
@@ -272,35 +272,35 @@ export function ChartExportDialog({ component, rows, originalSize, provenance = 
           </p>
         </div>
       </div>
-      <aside className="chart-export-controls explorer-controls" aria-label="Export settings">
+      <aside className="chart-export-controls explorer-controls" aria-label="导出设置">
         <section className="explorer-section">
-          <h3>Theme</h3>
-          <Select label="Image theme" value={themeId} choices={exportThemes.map(theme => theme.id)} onChange={chooseTheme}
+          <h3>主题</h3>
+          <Select label="图片主题" value={themeId} choices={exportThemes.map(theme => theme.id)} onChange={chooseTheme}
             formatChoice={id => exportThemes.find(theme => theme.id === id)?.label} />
         </section>
         <section className="explorer-section">
-          <h3>Appearance</h3>
+          <h3>外观</h3>
           <SegmentedControl ariaLabel="Image appearance" value={appearance} onChange={chooseAppearance} fullWidth
-            options={[{ value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} />
-          <Switch fullWidth label="Transparent background" checked={transparent} onChange={setTransparent} />
+            options={[{ value: "light", label: "浅色" }, { value: "dark", label: "深色" }]} />
+          <Switch fullWidth label="透明背景" checked={transparent} onChange={setTransparent} />
         </section>
         <section className="explorer-section">
-          <h3>Include</h3>
-          <Switch fullWidth label="Title" checked={options.title} onChange={toggle("title")} />
-          {component.description && <Switch fullWidth label="Description" checked={options.description} onChange={toggle("description")} />}
-          {controls.values && <Switch fullWidth label="Data labels" checked={options.values} onChange={toggle("values")} />}
-          {controls.axes && <Switch fullWidth label="Axis titles" checked={options.axes} onChange={toggle("axes")} />}
-          {provenance.source && <Switch fullWidth label="Source" checked={options.source} onChange={toggle("source")} />}
-          {provenance.filters && <Switch fullWidth label="Filters" checked={options.filters} onChange={toggle("filters")} />}
+          <h3>包含内容</h3>
+          <Switch fullWidth label="标题" checked={options.title} onChange={toggle("title")} />
+          {component.description && <Switch fullWidth label="说明" checked={options.description} onChange={toggle("description")} />}
+          {controls.values && <Switch fullWidth label="数据标签" checked={options.values} onChange={toggle("values")} />}
+          {controls.axes && <Switch fullWidth label="坐标轴标题" checked={options.axes} onChange={toggle("axes")} />}
+          {provenance.source && <Switch fullWidth label="来源" checked={options.source} onChange={toggle("source")} />}
+          {provenance.filters && <Switch fullWidth label="筛选条件" checked={options.filters} onChange={toggle("filters")} />}
         </section>
       </aside>
     </div>
     <footer className="chart-export-footer">
-      {(layoutError || error || copyStatus && copyStatus !== "Copied") && <p className="chart-export-status" role="alert">{layoutError || error || copyStatus}</p>}
-      <button type="button" className="dashboard-header-action-button" disabled={!ready} onClick={copyImage}>{copyStatus === "Copied" ? "Copied" : "Copy image"}</button>
+      {(layoutError || error || copyStatus && copyStatus !== "已复制") && <p className="chart-export-status" role="alert">{layoutError || error || copyStatus}</p>}
+      <button type="button" className="dashboard-header-action-button" disabled={!ready} onClick={copyImage}>{copyStatus === "已复制" ? "已复制" : "复制图片"}</button>
       {ready ? <a className="dashboard-publish-button" href={image.url} download={chartExportFilename(component.title)}
-        onClick={() => { downloadedUrl.current = image.url; dismiss(); }}>Download PNG</a>
-        : <button type="button" className="dashboard-publish-button" disabled>Download PNG</button>}
+        onClick={() => { downloadedUrl.current = image.url; dismiss(); }}>下载 PNG</a>
+        : <button type="button" className="dashboard-publish-button" disabled>下载 PNG</button>}
     </footer>
   </Dialog>;
 }

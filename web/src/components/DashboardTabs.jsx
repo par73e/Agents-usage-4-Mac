@@ -121,7 +121,7 @@ export function DashboardTabs({
   return <div className="dashboard-tabs-row">
     <div ref={scrollRef} className="dashboard-chrome-inner dashboard-tabs-inner">
       <nav ref={navRef} className={`dashboard-tabs${pressedTabId ? " is-pressed" : ""}${dragPreview ? " is-dragging" : ""}`}
-        role="tablist" aria-label="Dashboard pages">
+        role="tablist" aria-label="页面">
         {tabs.map((tab) => <span className="dashboard-tab-item" role="presentation" key={tab.id}>
           <button type="button" role="tab"
           ref={(element) => {

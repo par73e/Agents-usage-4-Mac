@@ -9,7 +9,7 @@ function fixture(count) {
   const bins=Array.from({length:count},(_,i)=>({id:String(i),start_ms:base+i*hour,end_ms:base+(i+1)*hour,
     start:new Date(base+i*hour).toISOString(),end:new Date(base+(i+1)*hour).toISOString(),label:`07/10 ${i%24}:00`,partial:false}));
   const buckets=bins.map((bin,i)=>({id:bin.id,tokens:i%7?110:0,responses:i%7?1:0,efforts:i%7?{high:110}:{},cached:i%7?70:0,uncached:i%7?30:0,cache_unknown:0,output:i%7?10:0}));
-  return {bins,models:[{name:'a',tokens:buckets.reduce((n,b)=>n+b.tokens,0),buckets}],quota:{windows:[]},evidenceRows:[{response_id:'evidence'}]};
+  return {timezone:'UTC',bins,models:[{name:'a',tokens:buckets.reduce((n,b)=>n+b.tokens,0),buckets}],quota:{windows:[]},evidenceRows:[{response_id:'evidence'}]};
 }
 test('multi-month hourly overview has a bounded number of drawn buckets',()=>{
   const source=fixture(2616),view=buildChartView(source,[0,2615]);
@@ -35,6 +35,28 @@ test('grouped token bins and exact quota timestamps share plot edges',()=>{
   const source=fixture(2616),view=buildChartView(source,[0,2615]);
   assert.equal(quotaPosition(source.bins[24].start_ms,view.bins),1/view.bins.length);
   assert.equal(quotaPosition(source.bins.at(-1).end_ms,view.bins),1);
+});
+test('a view that begins inside a day keeps its first bar short, so the next ones begin at day starts',()=>{
+  const source=fixture(2616),view=buildChartView(source,[10,2615]);
+  assert.equal(view.overviewStride,24);
+  // One bar of the 14 buckets up to midnight, then 108 whole days.
+  assert.equal(view.bins.length,109);assert.equal(view.bins[0].bucket_count,14);
+  assert.equal(view.bins[1].start,source.bins[24].start);
+  assert.equal(quotaPosition(source.bins[24].start_ms,view.bins),1/view.bins.length);
+  assert.equal(quotaPosition(source.bins.at(-1).end_ms,view.bins),1);
+  // What the short bar holds is what its own buckets hold.
+  assert.equal(view.models[0].buckets[0].tokens,source.models[0].buckets.slice(10,24).reduce((n,b)=>n+b.tokens,0));
+  assert.equal(view.models[0].buckets[0].tokens,view.models[0].buckets[0].cached+view.models[0].buckets[0].uncached+view.models[0].buckets[0].cache_unknown+view.models[0].buckets[0].output);
+});
+test('a merged bar has a width that cuts a day evenly',()=>{
+  // 900 buckets of an hour in at most 100 bars need a stride of 9 or more. Eight hours would not fit a day; twelve do.
+  const source=fixture(900),view=buildChartView(source,[0,899],100);
+  assert.equal(view.overviewStride,12);assert.equal(view.bins.length,75);
+  for(const bin of view.bins)assert.equal(bin.bucket_count,12);
+  // Six-hour buckets in at most 100 of 300 bars need a stride of 3 or more. Eighteen hours would not fit a day; a day does.
+  const six=Array.from({length:300},(_,i)=>{const at=Date.parse('2026-07-10T00:00:00Z')+i*6*3600000;
+    return{id:String(i),start_ms:at,end_ms:at+6*3600000,start:new Date(at).toISOString(),end:new Date(at+6*3600000).toISOString(),label:'x',partial:false};});
+  assert.equal(buildChartView({timezone:'UTC',bins:six,models:[],total_buckets:[]},[0,299],100).overviewStride,4);
 });
 test('daily or short ranges retain original records without merging',()=>{
   const source=fixture(109),view=buildChartView(source,[0,108]);

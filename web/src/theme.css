@@ -64,15 +64,28 @@
   --card-shadow: none;
   --data-app-chrome-background: var(--background);
   --data-app-chrome-text: var(--text);
-  --token-cached: light-dark(#8dc9e9, #a6dff4);
-  --token-uncached: light-dark(#438edf, #60adf5);
-  --token-output: light-dark(#125fe5, #217df5);
+  /* Token colours. Neighbouring parts of one bar must tell apart at a glance:
+     composition goes light sky, blue, amber for cached input, uncached input
+     and output; effort climbs sky, teal, blue, violet, magenta, rose. */
+  --token-cached: light-dark(#a3d6f3, #aee0f7);
+  --token-uncached: light-dark(#3d8fe3, #63acf3);
+  --token-output: light-dark(#ef9f16, #f5b73f);
   --effort-none: light-dark(#d5dce6, #647084);
-  --effort-minimal: light-dark(#b1d8ef, #b4dff5);
-  --effort-low: light-dark(#72b8e7, #9bd6f1);
-  --effort-medium: light-dark(#418ee1, #63b3fa);
-  --effort-high: light-dark(#295dd9, #467ff5);
-  --effort-xhigh: light-dark(#6554d0, #9c8bfa);
-  --effort-max: light-dark(#914db3, #c58ae6);
-  --effort-ultra: light-dark(#b94480, #e68fbc);
+  --effort-minimal: light-dark(#c9eaf8, #86cdec);
+  --effort-low: light-dark(#7fcbf0, #8fd4f4);
+  --effort-medium: light-dark(#1cab9b, #3cc8b8);
+  --effort-high: light-dark(#2f6bea, #5f8ff5);
+  --effort-xhigh: light-dark(#7a5af8, #9d86fa);
+  --effort-max: light-dark(#c2419b, #da72bd);
+  --effort-ultra: light-dark(#e0475b, #ef7585);
+  /* One colour for each agent, wherever usage is split by agent: Codex in its
+     blue-purple, Claude Code in its orange, Anti Gravity in Google's blue with
+     Google's rainbow for the fill of its bars. */
+  --agent-codex: light-dark(#5a5bd6, #8d8df0);
+  --agent-codex-fill: linear-gradient(90deg, #4c8df6 0%, #6a5cf0 100%);
+  --agent-claude: light-dark(#d97757, #e4936f);
+  --agent-claude-fill: var(--agent-claude);
+  --agent-antigravity: light-dark(#3b7ef0, #74a6f6);
+  --agent-antigravity-fill: linear-gradient(90deg, #4285f4 0%, #ea4335 34%, #fbbc05 67%, #34a853 100%);
+  --attention: light-dark(#b76e00, #f0b24a);
 }

@@ -52,11 +52,11 @@ import { useDataAppContextTools } from "./use-data-app-context-tools.js";
 import { editableTextTarget, useInlineEditing } from "./use-inline-editing.js";
 import { usePresentationHistory, usePresentationPersistence } from "./use-presentation.js";
 
-const defaultDashboardTabs = [{ id: "dashboard", label: "Dashboard" }];
+const defaultDashboardTabs = [{ id: "dashboard", label: "仪表盘" }];
 
 // Use the same capture capability as quick copy/download, including resolved chart types.
 function chartExportAction(component, onSelect) {
-  return <MenuItem icon="download" data-requires-chart-image onSelect={onSelect}>Export chart</MenuItem>;
+  return <MenuItem icon="download" data-requires-chart-image onSelect={onSelect}>导出图表</MenuItem>;
 }
 
 function reconcileDashboardTabs(current, authored) {

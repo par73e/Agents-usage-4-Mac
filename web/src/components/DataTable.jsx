@@ -123,7 +123,7 @@ export function DataTable({ rows, searchable = true, compactColumns = [], compac
       {(searchable || toolbarControls) && (
         <div className="toolbar table-toolbar">
           {searchable && <label className="search-field"><Icon name="search" />
-            <input className="search" aria-label="Search data" placeholder="Search data" value={search}
+            <input className="search" aria-label="搜索数据" placeholder="搜索数据" value={search}
               onChange={(event) => { setSearch(event.target.value); setPage(0); }} />
           </label>}
           {toolbarControls && <div className="table-toolbar-controls">{toolbarControls}</div>}
@@ -156,7 +156,7 @@ export function DataTable({ rows, searchable = true, compactColumns = [], compac
               const content = typeof definition?.renderCell === "function" ? definition.renderCell(value, row)
                   : presentation === "sparkline" ? <TableVisualTooltip
                   label={definition.label ?? columnLabel(column)} values={value}
-                  value="No reviewed history" formatValue={(point) => formatCell(point, column)}>
+                  value="没有历史记录" formatValue={(point) => formatCell(point, column)}>
                   <TableSparkline values={value} label={definition.label ?? columnLabel(column)} />
                 </TableVisualTooltip>
                   : presentation === "bar" ? <TableVisualTooltip
@@ -197,18 +197,18 @@ export function DataTable({ rows, searchable = true, compactColumns = [], compac
         </table>
       </div>
       {pages > 1 && paginationStyle === "receipt" ? <div className="receipt-pagination">
-        <button type="button" aria-label="Previous page" disabled={!currentPage}
-          onClick={() => setPage(currentPage - 1)}>Previous</button>
-        <span role="status" aria-live="polite">Rows {currentPage * pageSize + 1}–{Math.min((currentPage + 1) * pageSize, visible.length)} of {visible.length.toLocaleString()}</span>
-        <button type="button" aria-label="Next page" disabled={currentPage + 1 >= pages}
-          onClick={() => setPage(currentPage + 1)}>Next</button>
+        <button type="button" aria-label="上一页" disabled={!currentPage}
+          onClick={() => setPage(currentPage - 1)}>上一页</button>
+        <span role="status" aria-live="polite">第 {currentPage * pageSize + 1}–{Math.min((currentPage + 1) * pageSize, visible.length)} 条，共 {visible.length.toLocaleString()} 条</span>
+        <button type="button" aria-label="下一页" disabled={currentPage + 1 >= pages}
+          onClick={() => setPage(currentPage + 1)}>下一页</button>
       </div> : paginationStyle !== "receipt" && (searchable || toolbarControls || pages > 1) && (
         <div className="toolbar table-pagination">
-          <span className="source-value" aria-live="polite">{visible.length ? `${currentPage * pageSize + 1}–${Math.min((currentPage + 1) * pageSize,visible.length)} of ${visible.length} results` : "No results"}</span>
-          {pages > 1 && <div className="actions"><span className="source-value">Page {currentPage + 1} of {pages}</span>
-            <button type="button" className="table-page-button" aria-label="Previous page"
+          <span className="source-value" aria-live="polite">{visible.length ? `第 ${currentPage * pageSize + 1}–${Math.min((currentPage + 1) * pageSize,visible.length)} 条，共 ${visible.length} 条` : "没有匹配的行"}</span>
+          {pages > 1 && <div className="actions"><span className="source-value">第 {currentPage + 1} / {pages} 页</span>
+            <button type="button" className="table-page-button" aria-label="上一页"
               disabled={!currentPage} onClick={() => setPage(currentPage - 1)}><Icon name="chevronLeft" /></button>
-            <button type="button" className="table-page-button" aria-label="Next page"
+            <button type="button" className="table-page-button" aria-label="下一页"
               disabled={currentPage + 1 >= pages} onClick={() => setPage(currentPage + 1)}>
               <Icon name="chevronRight" />
             </button>

@@ -87,7 +87,7 @@ function ReviewedFreshness({ generatedAt }) {
   return (
     <>
       <span className="dashboard-freshness-full">
-        Updated {formatReviewedAt(generatedAt)}
+        更新于 {formatReviewedAt(generatedAt)}
         <span className="dashboard-freshness-time">, {formatReviewedAt(generatedAt, "time")}</span>
       </span>
       <span className="dashboard-freshness-compact">{formatReviewedAt(generatedAt, "compact")}</span>
@@ -1131,16 +1131,16 @@ export function DataAppThemeDrawer({
       className={`theme-drawer${open ? " is-open" : ""}`}
       aria-hidden={!open}
       inert={!open}
-      aria-label="Theme picker"
+      aria-label="主题选择"
     >
       <div className="dashboard-chrome-inner theme-drawer-content">
         <header className="theme-drawer-header">
-          <h2>Theme</h2>
+          <h2>主题</h2>
           <div className="theme-drawer-actions">
             {onAppearanceChange && (
               <>
               <span className="theme-appearance-native">
-                <Select label="Appearance" value={appearance} choices={["light", "dark", "system"]}
+                <Select label="外观" value={appearance} choices={["light", "dark", "system"]}
                   onChange={onAppearanceChange} formatChoice={value => value[0].toUpperCase() + value.slice(1)}
                   triggerClassName="theme-appearance-trigger" />
               </span>
@@ -1152,7 +1152,7 @@ export function DataAppThemeDrawer({
                   <button
                     type="button"
                     className="theme-appearance-trigger"
-                    aria-label="Appearance"
+                    aria-label="外观"
                     tabIndex={open ? 0 : -1}
                   >
                     <Icon name={appearance === "light" ? "sun" : appearance === "dark" ? "moon" : "monitor"} />
@@ -1163,9 +1163,9 @@ export function DataAppThemeDrawer({
               >
                 <Dropdown.RadioGroup value={appearance} onValueChange={onAppearanceChange}>
                   {[
-                    { value: "light", icon: "sun", label: "Light" },
-                    { value: "dark", icon: "moon", label: "Dark" },
-                    { value: "system", icon: "monitor", label: "System" },
+                    { value: "light", icon: "sun", label: "浅色" },
+                    { value: "dark", icon: "moon", label: "深色" },
+                    { value: "system", icon: "monitor", label: "跟随系统" },
                   ].map(({ value, icon, label }) => (
                     <Dropdown.RadioItem key={value} className="menu-item" value={value}>
                       <Icon name={icon} />
@@ -1183,7 +1183,7 @@ export function DataAppThemeDrawer({
             <button
               type="button"
               className="icon-button theme-drawer-close"
-              aria-label="Close theme picker"
+              aria-label="关闭主题选择"
               tabIndex={open ? 0 : -1}
               onClick={onClose}
             >

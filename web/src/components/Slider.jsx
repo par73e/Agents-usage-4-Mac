@@ -379,7 +379,7 @@ export function RangeSlider({
         onFocus={() => setActiveThumb("upper")} onPointerDown={() => setActiveThumb("upper")}
         onChange={(event) => changeThumb("upper", event.currentTarget.valueAsNumber)} />
     </div>
-    <span id={lowerLabelId} className="data-slider-visually-hidden">Minimum</span>
-    <span id={upperLabelId} className="data-slider-visually-hidden">Maximum</span>
+    <span id={lowerLabelId} className="data-slider-visually-hidden">最小值</span>
+    <span id={upperLabelId} className="data-slider-visually-hidden">最大值</span>
   </div>;
 }

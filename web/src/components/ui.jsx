@@ -279,7 +279,7 @@ export function MenuGroup({ label, children }) {
   );
 }
 
-export function InfoTooltip({ label = "More information", children, portalContainer }) {
+export function InfoTooltip({ label = "更多信息", children, portalContainer }) {
   const id = useId();
   const triggerRef = useRef(null);
   const tooltipRef = useRef(null);

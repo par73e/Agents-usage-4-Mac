@@ -3,6 +3,10 @@ export const E_LABEL = { none: "none", minimal: "minimal", low: "low", medium: "
 export const E_COLORS = { none: "var(--effort-none)", minimal: "var(--effort-minimal)", low: "var(--effort-low)", medium: "var(--effort-medium)", high: "var(--effort-high)", xhigh: "var(--effort-xhigh)", max: "var(--effort-max)", ultra: "var(--effort-ultra)", unknown: "var(--chart-8)" };
 export const C_SERIES = [{ key: "cached", label: "输入 · 命中缓存", color: "var(--token-cached)" }, { key: "uncached", label: "输入 · 未命中缓存", color: "var(--token-uncached)" }, { key: "output", label: "输出", color: "var(--token-output)" }];
 
+// Whether a part deserves a legend line: under 0.05% of the whole it reads as
+// "0.0%" and is too thin to see in a bar.
+export const visibleShare = (part, whole) => whole > 0 && part / whole >= 0.0005;
+
 export function cacheHitRate(cached, total) {
   return total > 0 ? (cached || 0) / total : null;
 }

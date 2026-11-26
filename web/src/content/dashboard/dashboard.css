@@ -138,3 +138,85 @@
 .usage-total-detail>summary:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 .usage-legacy-detail { padding:0 2px; }
 .usage-legacy-detail>div { margin-top:12px; }
+
+/* ---------- Added with the model ranking and the per-agent share ---------- */
+/* The share of each agent in the range: one bar split by agent, then a line for each. */
+.usage-agents { display:grid; gap:9px; margin:0 2px 4px; }
+.usage-agents-bar { display:flex; height:8px; border-radius:4px; overflow:hidden; background:var(--chart-neutral-fill); }
+.usage-agents-bar i { display:block; height:100%; }
+.usage-agents-list { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px 22px; font-size:12px; color:var(--secondary); }
+.usage-agents-list li { display:inline-flex; align-items:center; gap:7px; }
+.usage-agents-list i { width:10px; height:10px; border-radius:3px; flex:none; }
+.usage-agents-list strong { color:var(--text); font-weight:500; }
+.usage-stat-quiet { color:var(--secondary); }
+.usage-stat-quiet.is-error { color:var(--negative); }
+/* The one colour of each agent. Codex and Anti Gravity are filled end to end with a gradient; the others with a flat colour. */
+.usage-agent-codex { background:var(--agent-codex-fill); }
+.usage-agent-claude { background:var(--agent-claude-fill); }
+.usage-agent-antigravity { background:var(--agent-antigravity-fill); }
+
+/* Numbers under a chart's legend: responses, the size of a response, cache hit, and the range before. */
+.usage-total-head { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px 20px; padding:2px 0 14px; }
+.usage-total-head .usage-model-legend { padding:0; }
+.usage-total-stats { display:flex; flex-wrap:wrap; gap:4px 16px; margin-left:auto; font-size:12px; color:var(--secondary); white-space:nowrap; }
+.usage-total-stats strong { color:var(--text); font-weight:500; }
+.usage-total-stats .is-up { color:var(--movement-positive); }
+.usage-total-stats .is-down { color:var(--movement-negative); }
+
+/* A range that is mostly empty at one end says so, and offers the part with records. */
+.usage-quiet-note { display:flex; align-items:center; flex-wrap:wrap; gap:6px 14px; margin:12px 0 0; padding:9px 12px; border-radius:8px; background:var(--control-hover); font-size:12px; color:var(--secondary); line-height:1.6; }
+.usage-quiet-note .button { font-size:11px; }
+.usage-export { font-size:11px; }
+.usage-export:disabled { opacity:.5; cursor:default; }
+
+/* A plain table of counts: every row on one page, in a box that scrolls when long. */
+.usage-table-box { overflow:auto; margin-top:12px; border:1px solid var(--border); border-radius:10px; scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
+.usage-table { width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; }
+.usage-table caption { text-align:left; padding:11px 16px 3px 12px; color:var(--secondary); font-size:11px; }
+.usage-table th { position:sticky; top:0; z-index:1; background:var(--data-card-background); }
+.usage-table th,.usage-table td { padding:8px 16px 8px 12px; border-bottom:1px solid var(--border); white-space:nowrap; text-align:left; }
+.usage-table th { font-weight:500; color:var(--secondary); }
+.usage-table .is-num { text-align:right; }
+.usage-table .is-zero { color:var(--secondary); opacity:.7; }
+.usage-table tfoot td { position:sticky; bottom:0; background:var(--control-hover); font-weight:500; }
+
+/* Rankings: a row is a place, a name, a bar as long as its share of the first row, and its values. */
+.usage-rank-card,.usage-models-section { min-width:0; margin:0 0 22px; }
+.usage-rank-card { padding:20px 24px 16px; border:1px solid var(--border); border-radius:var(--data-card-radius); background:var(--data-card-background); }
+.usage-rank-head { display:flex; align-items:center; flex-wrap:wrap; gap:10px 16px; }
+.usage-rank-head h2 { font-size:15px; font-weight:600; margin:0 auto 0 0; }
+.usage-section-count { font-size:11px; color:var(--secondary); }
+.usage-rank-note { margin:8px 0 14px; font-size:11px; color:var(--secondary); line-height:1.7; }
+.usage-rank-legend { display:flex; flex-wrap:wrap; gap:6px 22px; margin:0 0 12px; font-size:12px; color:var(--secondary); }
+.usage-rank-legend>span { display:inline-flex; align-items:center; gap:7px; }
+.usage-rank-legend i { width:10px; height:10px; border-radius:3px; }
+.usage-rank-legend strong { color:var(--text); font-weight:500; }
+.usage-rank-list { list-style:none; margin:0; padding:0; display:grid; gap:4px; }
+.usage-rank-row { display:grid; grid-template-columns:20px minmax(110px,230px) minmax(120px,1fr) 72px 50px 116px; align-items:center; gap:12px; padding:6px 8px; border-radius:8px; font-size:12px; }
+.usage-rank-row:hover { background:var(--control-hover); }
+.usage-rank-row.is-selected { background:color-mix(in srgb, var(--accent) 10%, transparent); }
+.usage-rank-order { color:var(--secondary); text-align:right; font-variant-numeric:tabular-nums; }
+.usage-rank-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); font-weight:500; text-align:left; }
+.usage-rank-name small { margin-left:7px; font-size:10px; font-weight:400; color:var(--secondary); }
+.usage-rank-track { display:block; height:12px; border-radius:4px; background:var(--chart-neutral-fill); overflow:hidden; }
+.usage-rank-fill { display:flex; height:100%; min-width:2px; border-radius:4px; overflow:hidden; }
+.usage-rank-fill i { display:block; height:100%; }
+.usage-rank-value { color:var(--text); font-weight:500; text-align:right; font-variant-numeric:tabular-nums; }
+.usage-rank-share,.usage-rank-count { color:var(--secondary); text-align:right; font-variant-numeric:tabular-nums; }
+.usage-rank-more { margin-top:12px; font-size:11px; }
+.usage-rank-empty { margin:16px 0 4px; font-size:12px; color:var(--secondary); }
+/* A session is named by a button, so choosing it needs no second control. */
+.usage-rank-pick { display:block; width:100%; border:0; padding:0; background:none; cursor:pointer; font:inherit; text-align:left; line-height:1.4; }
+.usage-rank-pick>span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.usage-rank-pick:hover { color:var(--accent); }
+.usage-rank-pick small { display:block; margin:1px 0 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.usage-rank-list-sessions .usage-rank-row { padding-top:7px; padding-bottom:7px; }
+
+/* The heading of the per-model charts, with how they are shown. */
+.usage-section-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; margin:0 2px 6px; }
+.usage-section-head h2 { font-size:15px; font-weight:600; margin:0 auto 0 0; }
+.usage-section-tools { display:flex; flex-wrap:wrap; gap:16px; }
+.usage-section-note { margin:0 2px 14px; font-size:11px; color:var(--secondary); line-height:1.7; }
+/* Compact charts sit two to a row where there is room for both. */
+.usage-models.is-compact { gap:16px; }
+@media (min-width:1100px) { .usage-models.is-compact { grid-template-columns:repeat(2,minmax(0,1fr)); } }
