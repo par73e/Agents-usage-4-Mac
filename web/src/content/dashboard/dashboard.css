@@ -26,22 +26,23 @@
 .usage-session-trigger>span:first-child { color:var(--text); font-weight:500; }
 .usage-session-trigger strong { font-weight:500; flex:1; text-align:left; }
 .usage-session-trigger>.usage-chevron { display:inline-flex; flex:none; width:22px; height:22px; align-items:center; justify-content:center; margin:0 -3px 0 0; color:var(--secondary); }
-.usage-footer summary { display:inline-flex; align-items:center; gap:8px; }
+/* The arrow of a fold-out heading: a small corner on the middle line of its text. The corner of a turned square lies below the middle of its box when it points down, and above it when it points up, so it is moved back each way. */
+.usage-footer summary { display:inline-flex; align-items:center; gap:6px; }
 .usage-footer summary::-webkit-details-marker { display:none; }
-.usage-footer summary::after { content:""; flex:none; width:16px; height:16px; border-right:1.75px solid currentColor; border-bottom:1.75px solid currentColor; transform:rotate(45deg); transition:transform .16s ease; }
-.usage-footer details[open] summary::after { transform:rotate(-135deg); }
-.usage-total-detail>summary { display:inline-flex; align-items:center; gap:8px; }
+.usage-footer summary::after { content:""; flex:none; width:7px; height:7px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:translateY(-2.5px) rotate(45deg); transition:transform .16s ease; }
+.usage-footer details[open] summary::after { transform:translateY(2.5px) rotate(-135deg); }
+.usage-total-detail>summary { display:inline-flex; align-items:center; gap:6px; }
 .usage-total-detail>summary::-webkit-details-marker { display:none; }
-.usage-total-detail>summary::after { content:""; flex:none; width:16px; height:16px; border-right:1.75px solid currentColor; border-bottom:1.75px solid currentColor; transform:rotate(45deg); transition:transform .16s ease; }
-.usage-total-detail[open]>summary::after { transform:rotate(-135deg); }
-.usage-quota-events summary { display:inline-flex; align-items:center; gap:8px; }
+.usage-total-detail>summary::after { content:""; flex:none; width:7px; height:7px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:translateY(-2.5px) rotate(45deg); transition:transform .16s ease; }
+.usage-total-detail[open]>summary::after { transform:translateY(2.5px) rotate(-135deg); }
+.usage-quota-events summary { display:inline-flex; align-items:center; gap:6px; }
 .usage-quota-events summary::-webkit-details-marker { display:none; }
-.usage-quota-events summary::after { content:""; flex:none; width:16px; height:16px; border-right:1.75px solid currentColor; border-bottom:1.75px solid currentColor; transform:rotate(45deg); transition:transform .16s ease; }
-.usage-quota-events[open]>summary::after { transform:rotate(-135deg); }
+.usage-quota-events summary::after { content:""; flex:none; width:7px; height:7px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:translateY(-2.5px) rotate(45deg); transition:transform .16s ease; }
+.usage-quota-events[open]>summary::after { transform:translateY(2.5px) rotate(-135deg); }
 .usage-range-recent summary { display:inline-flex; align-items:center; gap:7px; }
 .usage-range-recent summary::-webkit-details-marker { display:none; }
-.usage-range-recent summary::after { content:""; flex:none; width:16px; height:16px; border-right:1.75px solid currentColor; border-bottom:1.75px solid currentColor; transform:rotate(45deg); transition:transform .16s ease; }
-.usage-range-recent[open]>summary::after { transform:rotate(-135deg); }
+.usage-range-recent summary::after { content:""; flex:none; width:7px; height:7px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform:translateY(-2.5px) rotate(45deg); transition:transform .16s ease; }
+.usage-range-recent[open]>summary::after { transform:translateY(2.5px) rotate(-135deg); }
 .usage-session-trigger:disabled { opacity:.5; cursor:wait; }
 .usage-session-popover { position:absolute; top:calc(100% + 8px); left:0; width:440px; max-width:calc(100vw - 64px); background:var(--surface-raised); box-shadow:0 12px 40px -10px rgb(0 0 0 / 30%); border:1px solid var(--border); border-radius:14px; z-index:30; overflow:hidden; display:flex; flex-direction:column; animation:usage-pop .14s ease-out; }
 .usage-session-search { padding:14px 14px 9px; flex:none; }
