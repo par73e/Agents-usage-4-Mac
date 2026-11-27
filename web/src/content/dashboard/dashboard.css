@@ -76,7 +76,8 @@
    Dense ranges use the existing range slider to inspect fewer buckets. */
 .usage-chart-plot { min-width:0; overflow:visible; margin:0 -3px; }
 .usage-results[aria-busy="true"] { opacity:.6; }
-.usage-overview-note { margin:-6px 6px 16px; color:var(--secondary); font-size:12px; line-height:1.7; }
+/* Said inside the totals card, so the top of every agent's page looks the same. */
+.usage-overview-note { margin:12px 0 0; color:var(--secondary); font-size:12px; line-height:1.7; }
 .usage-model-caption { display:flex; justify-content:space-between; gap:12px; font-size:11px; color:var(--secondary); padding-top:12px; }
 /* What the page shows below the filters: the charts first. The line of the selected range's total that stood here said what the totals card, its figures and the session picker already say. */
 .usage-results { padding-top:26px; }

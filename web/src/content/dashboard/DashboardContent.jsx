@@ -166,7 +166,6 @@ function ProviderPane({ provider, index, indexes, queries, setDashboardBusy, loc
     {!result && loading ? <div className="usage-loading" role="status"><span />正在汇总所选区间…</div>
       : noRecords ? <section className="usage-empty usage-source-empty" role="status"><img src={ICONS[provider.key]} alt="" width="44" height="44" /><h2>{emptySource(provider).title}</h2><p>{emptySource(provider).body}</p></section>
       : result && <div className="usage-results" aria-busy={loading || result.generation !== index?.generation} inert={result.queryKey !== queryKey ? true : undefined}>
-      {plotResult.overviewStride > 1 && <p className="usage-overview-note" role="status" title="时间跨度很大时，每根柱子合并了多个所选时段；悬浮可看完整起止时间。把上方的时间范围缩小到 120 个时段以内，会恢复所选粒度；区间总量不变。">每根柱子合并了最多 {plotResult.overviewStride} 个时段</p>}
       <TotalUsageChart result={plotResult} quiet={quiet} mode={mode} provider={provider} comparison={comparison} onTrimRange={showRange} />
       {quotaAvailable(index) ? <QuotaCharts result={plotResult} sourceRows={result.quotaEvidenceRows} onShowRecorded={showRange} /> : <QuotaUnavailable provider={provider} />}
       <ModelRanking state={agentModels} provider={provider} applied={applied} merge={mergeVariants} onMergeChange={setMergeVariants} />
