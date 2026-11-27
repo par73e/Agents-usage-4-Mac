@@ -62,12 +62,6 @@
 .usage-picker-footer { padding:12px 15px; font-size:11px; color:var(--secondary); border-top:1px solid var(--border); flex:none; }
 .usage-picker-done { display:none; }
 .usage-picker-empty { padding:20px; color:var(--secondary); font-size:13px; }
-.usage-summary { display:flex; justify-content:space-between; align-items:center; padding:28px 2px 22px; gap:20px; }
-.usage-summary>div { display:flex; gap:12px; align-items:baseline; }
-.usage-summary>div>span { color:var(--secondary); font-size:13px; }
-.usage-summary strong { font-size:25px; letter-spacing:-.6px; font-weight:600; }
-.usage-summary p { display:flex; align-items:center; gap:9px; margin:0; color:var(--secondary); font-size:12px; }
-.usage-summary p>span { opacity:.5; }
 .usage-models { display:grid; grid-template-columns:minmax(0,1fr); gap:22px; }
 .usage-model-item:hover,.usage-model-item:focus-within { z-index:2; }
 .usage-model-card { min-width:0; }
@@ -82,11 +76,15 @@
    Dense ranges use the existing range slider to inspect fewer buckets. */
 .usage-chart-plot { min-width:0; overflow:visible; margin:0 -3px; }
 .usage-results[aria-busy="true"] { opacity:.6; }
-.usage-overview-note { margin:0 0 16px; color:var(--secondary); font-size:12px; line-height:1.7; }
+.usage-overview-note { margin:-6px 6px 16px; color:var(--secondary); font-size:12px; line-height:1.7; }
 .usage-model-caption { display:flex; justify-content:space-between; gap:12px; font-size:11px; color:var(--secondary); padding-top:12px; }
-.usage-zoom { display:flex; align-items:center; gap:20px; padding:0 4px 20px; }
-.usage-zoom>div { flex:1; }
-.usage-zoom>button { font-size:11px; border:0; color:var(--secondary); cursor:pointer; background:none; white-space:nowrap; }
+/* What the page shows below the filters: the charts first. The line of the selected range's total that stood here said what the totals card, its figures and the session picker already say. */
+.usage-results { padding-top:26px; }
+/* The display range of the charts on one line: a short name, the slider, and a way back to the whole range once it is narrowed. */
+.usage-zoom { display:flex; align-items:center; gap:16px; padding:2px 6px 18px; }
+.usage-zoom>div { flex:1; min-width:0; }
+.usage-zoom-reset { flex:none; font:inherit; font-size:11px; border:0; padding:2px 0; color:var(--secondary); cursor:pointer; background:none; }
+.usage-zoom-reset:hover { color:var(--text); }
 .usage-footer { margin-top:24px; padding:17px 2px; border-top:1px solid var(--border); font-size:11px; color:var(--secondary); }
 .usage-footer>div { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .usage-footer>div>span:last-child { margin-left:auto; }
@@ -114,7 +112,7 @@
 @keyframes usage-pop { from { opacity:.5; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
 @keyframes usage-spin { to { transform:rotate(360deg); } }
 @media (max-width:1050px) { .usage-color-mode { margin-left:0; } }
-@media (max-width:650px) { .usage-workspace { padding-top:20px; }.usage-topline { margin-bottom:20px; }.usage-topline h1 { font-size:24px; }.usage-topline p { font-size:11px; }.usage-filter-surface { padding:18px 16px 0; }.usage-view-controls { gap:15px; }.usage-color-mode { width:100%; }.usage-secondary-controls { flex-wrap:wrap; gap:14px; }.usage-summary { align-items:flex-start; flex-direction:column; gap:9px; padding:24px 0 18px; }.usage-summary strong { font-size:22px; }.usage-summary>div { gap:8px; }.usage-session-popover { width:360px; left:-3px; }.usage-model-legend { gap:12px; }.usage-model-caption { flex-wrap:wrap; line-height:1.6; }.usage-model-total strong { font-size:17px; }.usage-footer>div>span:last-child { margin-left:0; flex-basis:100%; margin-top:6px; }.usage-zoom { gap:10px; } }
+@media (max-width:650px) { .usage-workspace { padding-top:20px; }.usage-topline { margin-bottom:20px; }.usage-topline h1 { font-size:24px; }.usage-topline p { font-size:11px; }.usage-filter-surface { padding:18px 16px 0; }.usage-view-controls { gap:15px; }.usage-color-mode { width:100%; }.usage-secondary-controls { flex-wrap:wrap; gap:14px; }.usage-session-popover { width:360px; left:-3px; }.usage-model-legend { gap:12px; }.usage-model-caption { flex-wrap:wrap; line-height:1.6; }.usage-model-total strong { font-size:17px; }.usage-footer>div>span:last-child { margin-left:0; flex-basis:100%; margin-top:6px; }.usage-zoom { gap:10px; } }
 /* A phone window is too short for a list under its trigger: the list becomes a sheet under the top bar, like the date panel, with its own Done button. Only the rows scroll, so the search and Done stay in reach. */
 @media (max-width:650px) {
   .usage-session-popover { position:fixed; top:64px; left:12px; right:12px; width:auto; max-width:none; max-height:calc(100dvh - 80px); }
@@ -210,7 +208,8 @@
 
 /* The heading of the per-model charts, with how they are shown. */
 .usage-section-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; margin:0 2px 6px; }
-.usage-section-head h2 { font-size:15px; font-weight:600; margin:0 auto 0 0; }
+.usage-section-head h2 { font-size:15px; font-weight:600; margin:0; }
+.usage-section-head .usage-section-count { margin-right:auto; }
 .usage-section-tools { display:flex; flex-wrap:wrap; gap:16px; }
 .usage-section-note { margin:0 2px 14px; font-size:11px; color:var(--secondary); line-height:1.7; }
 /* Compact charts sit two to a row where there is room for both. */

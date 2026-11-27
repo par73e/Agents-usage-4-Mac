@@ -12,7 +12,7 @@ import { groupModels, modelId } from "./models.js";
 import { useAgentModels, usePreviousPeriod } from "./use-range-compare.js";
 import { quietRange } from "./range-compare.js";
 import { post } from "./api.js";
-import { short, exact } from "./format.js";
+import { exact } from "./format.js";
 import { localMinute, presetRange } from "./date-range.js";
 import { PROVIDERS, providerByKey, isProvider, initialView, parseStored, providerIndexes, quotaAvailable, compactionAvailable, coverageNotes, removedNotice, emptySource, emptyResult, rangeForOthers, sharedRangeNotice, syncFailureText } from "./providers.js";
 import codexIcon from "../assets/agents/codex.svg";
@@ -115,7 +115,6 @@ function ProviderPane({ provider, index, indexes, queries, setDashboardBusy, loc
     }).finally(() => { if (request.current === current) { setLoading(false); setDashboardBusy(false); } });
     return () => { request.current++; setDashboardBusy(false); };
   }, [provider, noRecords, index?.generation, applied, granularity, includeCompaction, selection, reconcile, followNow, relativeKey, queryKey]);
-  const total = result?.totals?.total_tokens || 0;
   // Codex counts its compaction calls in or out by its own setting, whichever source is on screen.
   const codexCompaction = provider.key === "codex" ? includeCompaction : parseStored(read("view:codex"))?.includeCompaction ?? true;
   const comparison = usePreviousPeriod({ provider, generation: index?.generation, applied, includeCompaction, selection, reconcile, refreshKey: localRefresh?.checkedAt });
@@ -173,15 +172,17 @@ function ProviderPane({ provider, index, indexes, queries, setDashboardBusy, loc
     {!result && loading ? <div className="usage-loading" role="status"><span />正在汇总所选区间…</div>
       : noRecords ? <section className="usage-empty usage-source-empty" role="status"><img src={ICONS[provider.key]} alt="" width="44" height="44" /><h2>{emptySource(provider).title}</h2><p>{emptySource(provider).body}</p></section>
       : result && <div className="usage-results" aria-busy={loading || result.generation !== index?.generation} inert={result.queryKey !== queryKey ? true : undefined}>
-      <div className="usage-summary" data-reviewed-rows><div><span>所选范围总量</span><strong title={exact(total)}>{short(total)}</strong><span>tokens</span></div><p>{result.selected_ids.length} / {result.options.length} 个{noun}<span>·</span>{modelCount}<span>·</span>{exact(result.response_count)} {provider.unit}</p></div>
-      {result.bins.length > 24 && <div className="usage-zoom"><RangeSlider label="图表显示范围（不改变区间合计）" min={0} max={result.bins.length - 1} step={1} value={zoom} onChange={setZoom} formatValue={i => result.bins[Math.round(i)]?.label || ""} /><button onClick={() => setZoom([0,result.bins.length - 1])}>重置视图</button></div>}
-      {plotResult.overviewStride > 1 && <p className="usage-overview-note" role="status">长区间概览：每柱合并最多 {plotResult.overviewStride} 个所选时段，悬浮可看完整起止时间。缩小上方显示范围后恢复所选粒度；区间总量不变。</p>}
+      {result.bins.length > 24 && <div className="usage-zoom" title="拖动两端可缩小图表显示的时间段；所选范围的合计不变">
+        <RangeSlider label="显示范围" labelPlacement="inline" min={0} max={result.bins.length - 1} step={1} value={zoom} onChange={setZoom} formatValue={i => result.bins[Math.round(i)]?.label || ""} />
+        {(zoom[0] > 0 || zoom[1] < result.bins.length - 1) && <button type="button" className="usage-zoom-reset" onClick={() => setZoom([0, result.bins.length - 1])}>重置</button>}
+      </div>}
+      {plotResult.overviewStride > 1 && <p className="usage-overview-note" role="status" title="时间跨度很大时，每根柱子合并了多个所选时段；悬浮可看完整起止时间。缩小上方显示范围后恢复所选粒度，区间总量不变。">每根柱子合并了最多 {plotResult.overviewStride} 个时段</p>}
       <TotalUsageChart result={plotResult} quiet={quiet} mode={mode} provider={provider} comparison={comparison} onTrimRange={showRange} />
       {quotaAvailable(index) ? <QuotaCharts result={plotResult} zoom={plotZoom} sourceRows={result.quotaEvidenceRows} fullRange={{ start_ms: result.bins[0]?.start_ms, end_ms: result.bins.at(-1)?.end_ms }} onShowRecorded={showRange} onResetZoom={() => setZoom([0, result.bins.length - 1])} /> : <QuotaUnavailable provider={provider} />}
       <ModelRanking state={agentModels} provider={provider} applied={applied} merge={mergeVariants} onMergeChange={setMergeVariants} />
       <SessionRanking options={result.options || EMPTY} selection={selection} provider={provider} onSelect={pickSession} timezone={zone} />
       {result.models.length ? <section className="usage-models-section" aria-label="各模型用量">
-        <div className="usage-section-head"><h2>各模型用量</h2>
+        <div className="usage-section-head"><h2>各模型用量</h2><span className="usage-section-count">{modelCount}</span>
           <div className="usage-section-tools"><Switch label="合并不同写法" checked={mergeVariants} onChange={setMergeVariants} size="compact" /><Switch label="紧凑显示" checked={compactModels} onChange={setCompactModels} size="compact" /></div></div>
         <p className="usage-section-note">{mode === "effort" ? "各图的占比按整个区间的 Token 计算。" : "缓存输入和推理输出均不重复计数。"}{mergeVariants ? "名称只差来源标记的模型已合并，例如斜杠前的 imported、auto。" : ""}</p>
         <SortableRegion id="usage-models" variant="freeform" className={compactModels ? "usage-models is-compact" : "usage-models"} authoredRevision={2}>
