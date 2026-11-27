@@ -7,7 +7,6 @@ import { TotalUsageChart } from "./TotalUsageChart.jsx";
 import { ModelChart } from "./ModelChart.jsx";
 import { ModelRanking } from "./ModelRanking.jsx";
 import { SessionRanking } from "./SessionRanking.jsx";
-import { AgentShare } from "./AgentShare.jsx";
 import { buildChartView } from "./chart-view.js";
 import { groupModels, modelId } from "./models.js";
 import { useAgentModels, usePreviousPeriod } from "./use-range-compare.js";
@@ -175,7 +174,6 @@ function ProviderPane({ provider, index, indexes, queries, setDashboardBusy, loc
       : noRecords ? <section className="usage-empty usage-source-empty" role="status"><img src={ICONS[provider.key]} alt="" width="44" height="44" /><h2>{emptySource(provider).title}</h2><p>{emptySource(provider).body}</p></section>
       : result && <div className="usage-results" aria-busy={loading || result.generation !== index?.generation} inert={result.queryKey !== queryKey ? true : undefined}>
       <div className="usage-summary" data-reviewed-rows><div><span>所选范围总量</span><strong title={exact(total)}>{short(total)}</strong><span>tokens</span></div><p>{result.selected_ids.length} / {result.options.length} 个{noun}<span>·</span>{modelCount}<span>·</span>{exact(result.response_count)} {provider.unit}</p></div>
-      <AgentShare state={agentModels} />
       {result.bins.length > 24 && <div className="usage-zoom"><RangeSlider label="图表显示范围（不改变区间合计）" min={0} max={result.bins.length - 1} step={1} value={zoom} onChange={setZoom} formatValue={i => result.bins[Math.round(i)]?.label || ""} /><button onClick={() => setZoom([0,result.bins.length - 1])}>重置视图</button></div>}
       {plotResult.overviewStride > 1 && <p className="usage-overview-note" role="status">长区间概览：每柱合并最多 {plotResult.overviewStride} 个所选时段，悬浮可看完整起止时间。缩小上方显示范围后恢复所选粒度；区间总量不变。</p>}
       <TotalUsageChart result={plotResult} quiet={quiet} mode={mode} provider={provider} comparison={comparison} onTrimRange={showRange} />

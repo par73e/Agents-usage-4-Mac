@@ -10,7 +10,8 @@ const SHOWN = 12;
 
 // Models from largest to smallest: those of the agent on screen, or of every
 // agent together. A row of the list is one model. When agents are combined, its
-// bar is split by agent, each in its own colour.
+// bar is split by agent, each in its own colour, and a bar of every agent's
+// share of the range stands above the list.
 export function ModelRanking({ state, provider, applied, merge, onMergeChange }) {
   const [scope, setScope] = useState(() => { try { return localStorage.getItem("codex-usage:rank-scope:" + provider.key) === "all" ? "all" : "current"; } catch { return "current"; } });
   const [all, setAll] = useState(false);
@@ -37,9 +38,13 @@ export function ModelRanking({ state, provider, applied, merge, onMergeChange })
       <Button className="usage-export" onClick={exportCsv} disabled={!rows.length}>导出 CSV</Button>
     </div>
     <p className="usage-rank-note">按当前时间范围（{wallText(applied.start)} ～ {wallText(applied.end)}，{zoneLabel(applied.timezone)}）统计全部{provider.noun}，不随上方的{provider.noun}筛选变化。</p>
-    {scope === "all" && <div className="usage-rank-legend">{agents.map(agent => <span key={agent.key}><i className={`usage-agent-${agent.key}`} aria-hidden="true" />{agent.label}
-      {entryOf(agent)?.status === "ready" ? <><strong title={exact(totals[agent.key])}>{short(totals[agent.key])}</strong><span>{percent(totals[agent.key], agentWhole) ?? "0.0"}%</span></>
-        : <span>{entryOf(agent)?.status === "empty" ? "没有记录" : "未读到"}</span>}</span>)}</div>}
+    {scope === "all" && <div className="usage-rank-agents">
+      <div className="usage-agents-bar" aria-hidden="true">{agentWhole > 0 && agents.map(agent => totals[agent.key] > 0
+        && <i key={agent.key} className={`usage-agent-${agent.key}`} style={{ width: `${totals[agent.key] / agentWhole * 100}%` }} />)}</div>
+      <ul className="usage-agents-list">{agents.map(agent => <li key={agent.key}><i className={`usage-agent-${agent.key}`} aria-hidden="true" /><span>{agent.label}</span>
+        {entryOf(agent)?.status === "ready" ? <><strong title={exact(totals[agent.key])}>{short(totals[agent.key])}</strong><span>{percent(totals[agent.key], agentWhole) ?? "0.0"}%</span></>
+          : <span className={entryOf(agent)?.status === "error" ? "usage-stat-quiet is-error" : "usage-stat-quiet"}>{entryOf(agent)?.status === "empty" ? "没有记录" : "未读到"}</span>}</li>)}</ul>
+    </div>}
     {!rows.length ? <p className="usage-rank-empty">{waiting ? "正在读取各智能体的用量…" : "这个时间范围内没有模型用量记录。"}</p> : <>
       <ol className="usage-rank-list">{shown.map((row, index) => <li className="usage-rank-row" key={row.key}>
         <span className="usage-rank-order">{index + 1}</span>
