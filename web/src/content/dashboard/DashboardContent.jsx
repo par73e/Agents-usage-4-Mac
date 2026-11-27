@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Button, SegmentedControl, SortableRegion, Switch, useDataApp } from "../../data-app-public.jsx";
+import { Button, RangeSlider, SegmentedControl, SortableRegion, Switch, useDataApp } from "../../data-app-public.jsx";
 import { TimeRangePicker } from "./TimeRangePicker.jsx";
 import { SessionPicker } from "./SessionPicker.jsx";
 import { QuotaCharts, QuotaUnavailable } from "./QuotaCharts.jsx";
@@ -56,7 +56,7 @@ function ProviderPane({ provider, index, indexes, queries, setDashboardBusy, loc
   const [selection, setSelection] = useState(view.selection);
   const [followNow, setFollowNow] = useState(view.followNow), [relativeKey, setRelativeKey] = useState(view.relativeKey);
   const [result, setResult] = useState(null), [loading, setLoading] = useState(true), [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(""), [zoom, setZoom] = useState([0, 0]);
   // How models are shown and how tall their charts are: one setting for every source.
   const [mergeVariants, setMergeVariants] = useStoredFlag("merge-models", true);
   const [compactModels, setCompactModels] = useStoredFlag("compact-models", false);
@@ -65,16 +65,17 @@ function ProviderPane({ provider, index, indexes, queries, setDashboardBusy, loc
   const legacyRows = provider.legacyQuery ? queries[provider.legacyQuery]?.rows || EMPTY : EMPTY;
   const quotaRows = provider.quotaQuery ? queries[provider.quotaQuery]?.rows || EMPTY : EMPTY;
   const caveats = queries[provider.usageQuery]?.source?.caveats || EMPTY;
-  // The buckets of the selected range as they are drawn, then the models as
-  // they are shown: ways of writing one model brought together when the page is
-  // set to. ``scale`` is the tallest bar of them all, the common value axis.
-  const visible = useMemo(() => buildChartView(result, result ? [0, result.bins.length - 1] : [0, 0]), [result]);
+  // The buckets of the displayed part of the range, then the models as they are
+  // shown: ways of writing one model brought together when the page is set to.
+  // ``scale`` is the tallest bar of them all, the common value axis.
+  const visible = useMemo(() => buildChartView(result, zoom), [result, zoom]);
   const plotResult = useMemo(() => {
     if (!visible) return null;
     const models = groupModels(visible.models, mergeVariants);
     return { ...visible, models, scale: Math.max(1, ...models.flatMap(model => model.buckets.map(bucket => bucket.tokens))) };
   }, [visible, mergeVariants]);
-  const request = useRef(0);
+  const plotZoom = useMemo(() => [0, Math.max(0, (plotResult?.bins.length || 1) - 1)], [plotResult]);
+  const request = useRef(0), previousQuery = useRef(null), previousBins = useRef(0);
   const reconcile = localRefresh?.reconcile;
   const noRecords = index?.record_count === 0;
   const zone = applied.timezone;
@@ -93,6 +94,14 @@ function ProviderPane({ provider, index, indexes, queries, setDashboardBusy, loc
     const current = ++request.current; setLoading(true); setError(""); setDashboardBusy(true);
     post("/api/v1/query", { provider: provider.key, generation: index?.generation, start: applied.start, end: applied.end, timezone: applied.timezone, granularity, include_compaction: includeCompaction, sessions: selection }).then(data => {
       if (request.current !== current) return;
+      // Another query shows the whole range again. The same query asked once
+      // more, as after a sync, keeps a range that was narrowed; one that was
+      // whole stays whole as buckets are added or taken away.
+      const last = Math.max(0, data.bins.length - 1);
+      const changedQuery = previousQuery.current !== queryKey, oldCount = previousBins.current;
+      setZoom(current => changedQuery || current[0] === 0 && current[1] === oldCount - 1
+        ? [0, last] : [Math.min(current[0], last), Math.min(current[1], last)]);
+      previousQuery.current = queryKey; previousBins.current = data.bins.length;
       setResult({ ...data, queryKey, evidenceRows: usageRows, quotaEvidenceRows: quotaRows, legacyEvidenceRows: legacyRows });
       if (data.removed_ids.length) { setNotice(removedNotice(data.removed_ids.length, noun)); setSelection(s => ({ ...s, ids: data.selected_ids })); }
     }).catch(async e => {
@@ -166,8 +175,13 @@ function ProviderPane({ provider, index, indexes, queries, setDashboardBusy, loc
     {!result && loading ? <div className="usage-loading" role="status"><span />正在汇总所选区间…</div>
       : noRecords ? <section className="usage-empty usage-source-empty" role="status"><img src={ICONS[provider.key]} alt="" width="44" height="44" /><h2>{emptySource(provider).title}</h2><p>{emptySource(provider).body}</p></section>
       : result && <div className="usage-results" aria-busy={loading || result.generation !== index?.generation} inert={result.queryKey !== queryKey ? true : undefined}>
+      {/* The display range of the charts, on every agent's page alike: drag either end to show part of the selected range. The totals stay those of the whole range. */}
+      {result.bins.length > 1 && <div className="usage-zoom" title="拖动两端可只看所选范围中的一段时间，各图表一起变化；所选范围的合计不变。范围很长、柱子被合并时，把它拖窄到 120 个时段以内可恢复所选粒度。">
+        <RangeSlider label="显示范围" labelPlacement="inline" min={0} max={result.bins.length - 1} step={1} value={zoom} onChange={setZoom} formatValue={i => result.bins[Math.round(i)]?.label || ""} />
+        {(zoom[0] > 0 || zoom[1] < result.bins.length - 1) && <button type="button" className="usage-zoom-reset" onClick={() => setZoom([0, result.bins.length - 1])}>重置</button>}
+      </div>}
       <TotalUsageChart result={plotResult} quiet={quiet} mode={mode} provider={provider} comparison={comparison} onTrimRange={showRange} />
-      {quotaAvailable(index) ? <QuotaCharts result={plotResult} sourceRows={result.quotaEvidenceRows} onShowRecorded={showRange} /> : <QuotaUnavailable provider={provider} />}
+      {quotaAvailable(index) ? <QuotaCharts result={plotResult} zoom={plotZoom} sourceRows={result.quotaEvidenceRows} fullRange={{ start_ms: result.bins[0]?.start_ms, end_ms: result.bins.at(-1)?.end_ms }} onShowRecorded={showRange} onResetZoom={() => setZoom([0, result.bins.length - 1])} /> : <QuotaUnavailable provider={provider} />}
       <ModelRanking state={agentModels} provider={provider} applied={applied} merge={mergeVariants} onMergeChange={setMergeVariants} />
       <SessionRanking options={result.options || EMPTY} selection={selection} provider={provider} onSelect={pickSession} timezone={zone} />
       {result.models.length ? <section className="usage-models-section" aria-label="各模型用量">

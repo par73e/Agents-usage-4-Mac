@@ -1,6 +1,7 @@
 // Limit drawn categories, not evidence or query precision: a long range is
-// drawn with bars that each hold several buckets. The window is a parameter so
-// that tests can pin how buckets are merged; the page always shows it whole.
+// drawn with bars that each hold several buckets. The display-range slider on
+// the page chooses the window of buckets shown, and a narrow enough window
+// brings back one bar per bucket.
 import { clockParts } from "./format.js";
 
 export const MAX_PLOT_BUCKETS = 120;

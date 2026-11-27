@@ -84,7 +84,7 @@ export const TotalUsageChart = React.memo(function TotalUsageChart({ result, qui
       {estimated > 0 && <div className="usage-model-caption" data-reviewed-rows><span>逐响应明细 {short(result.totals.recorded_tokens)} · 旧日志区间估算 {short(estimated)}</span><span>旧累计不计入响应次数</span></div>}
       {quiet && <p className="usage-quiet-note" role="status">{quiet.side === "tail" ? `${dayTime(quiet.since, result.timezone)} 之后` : `${dayTime(quiet.since, result.timezone)} 之前`}没有用量记录，占所选范围的 {Math.round(quiet.empty / quiet.count * 100)}%。
         {onTrimRange && <Button onClick={() => onTrimRange({ start: quiet.start, end: quiet.end })}>只看有记录的时间</Button>}</p>}
-      {result.overviewStride > 1 && <p className="usage-overview-note" role="status" title="时间跨度很大时，每根柱子合并了多个所选时段；悬浮可看完整起止时间。把上方的时间范围缩小到 120 个时段以内，会恢复所选粒度；区间总量不变。">每根柱子合并了最多 {result.overviewStride} 个时段</p>}
+      {result.overviewStride > 1 && <p className="usage-overview-note" role="status" title="时间跨度很大时，每根柱子合并了多个所选时段；悬浮可看完整起止时间。把上方的显示范围拖窄到 120 个时段以内，或把时间范围缩小，会恢复所选粒度；区间总量不变。">每根柱子合并了最多 {result.overviewStride} 个时段</p>}
       {result.legacy_intervals.length > 0 && <p className="usage-estimate-note">旧日志用量表示两个观测之间的累计增量，按时长分摊到各柱；不表示实际均匀消耗。模型、推理强度与压缩类型未可靠记录的部分不作推断。</p>}
       <details className="usage-total-detail" onToggle={event => setTableOpen(event.currentTarget.open)}><summary>查看合计用量表</summary>
         {tableOpen && <><UsageTable caption="所有模型合计用量，与当前图表显示范围一致" columns={tableColumns} rows={tableRows} footer={tableFooter} />
