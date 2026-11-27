@@ -133,7 +133,7 @@ class Engine:
             reset=not previous
             if previous:
                 old_inode,old_size,old_mtime,old_prefix,checkpoint,offset,state_json=previous
-                parser_current=json.loads(state_json).get('parser_version')==6
+                parser_current=json.loads(state_json).get('parser_version')==7
                 if parser_current and identity==old_inode and st.st_size==old_size and st.st_mtime_ns==old_mtime:
                     stats['unchanged_files']+=1; return
                 reset=compressed or not parser_current or identity!=old_inode or st.st_size<old_size or st.st_size==old_size
@@ -145,7 +145,7 @@ class Engine:
                 c.execute('DELETE FROM occurrences WHERE file=?',(key,)); offset=0
                 c.execute('DELETE FROM quota_occurrences WHERE file=?',(key,))
                 c.execute('DELETE FROM legacy_snapshots WHERE file=?',(key,))
-                state={'thread_id':None,'created_ms':None,'inherited_counter':False,'legacy_initial_inherited':None,'parser_version':6,'contexts':{},'current':None,'defaults':{},'pending':None,'line':0,'invalid':0,'response_records':0,'legacy_counts':0,'legacy_first':None,'legacy_latest':None}
+                state={'thread_id':None,'created_ms':None,'inherited_counter':False,'legacy_initial_inherited':None,'parser_version':7,'contexts':{},'waiting':{},'current':None,'defaults':{},'pending':None,'line':0,'invalid':0,'response_records':0,'legacy_counts':0,'legacy_first':None,'legacy_latest':None}
                 stats['reparsed_files']+=1
             else:
                 state=json.loads(previous[6]); stats['appended_files']+=1
@@ -202,6 +202,17 @@ class Engine:
                     if tid:
                         state['current']=tid
                         state['contexts'][tid]={'model':p.get('model') or settings.get('model') or 'unknown','effort':p.get('effort') or settings.get('reasoning_effort') or 'unknown'}
+                        # Some versions of Codex write the first response of a turn just before the turn's own context.
+                        # Such a response was stored without a model. Its turn is named now, so it is completed,
+                        # and only it: a response is never given the model of another turn.
+                        for rid in state.get('waiting',{}).pop(tid,[]):
+                            stored=c.execute('SELECT data FROM occurrences WHERE file=? AND response=?',(key,rid)).fetchone()
+                            if not stored:continue
+                            obj=json.loads(stored[0])
+                            if obj.get('turn_id')==tid:
+                                obj.update(state['contexts'][tid])
+                                c.execute('UPDATE occurrences SET data=? WHERE file=? AND response=?',(json.dumps(obj),key,rid))
+                                stats['attributed_after_their_context']+=1
                 elif kind=='event_msg' and p.get('type')=='thread_settings_applied':
                     s=p.get('thread_settings') or {}; entry={}
                     if s.get('model'):entry['model']=s['model']
@@ -226,6 +237,7 @@ class Engine:
                         elif old.get('conflict'):obj['conflict']=True
                         else:obj['compaction']=old.get('compaction',False)
                     c.execute('INSERT OR REPLACE INTO occurrences VALUES(?,?,?)',(key,record.response_id,json.dumps(obj)))
+                    if not ctx:state.setdefault('waiting',{}).setdefault(p.get('turn_id'),[]).append(record.response_id)
                     state['pending']=record.response_id
             if compressed:
                 # Exit the decoder here to verify its return code before any

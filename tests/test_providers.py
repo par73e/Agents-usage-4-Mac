@@ -1,4 +1,6 @@
+import hashlib
 import json
+import sqlite3
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -187,6 +189,8 @@ def entry(identifier,at,model='Gemini 4 Hydrogen (High)',**fields):
 class AntigravityTest(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
+        # No test reads the conversations of the person running it.
+        own=patch.object(antigravity,'DEFAULT_TITLES',self.root/'titles'/'none.db');own.start();self.addCleanup(own.stop)
 
     def write(self,relative,data):
         path=self.root/relative;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(data));return path
@@ -214,6 +218,47 @@ class AntigravityTest(unittest.TestCase):
         self.assertEqual((rows['other']['thread_id'],rows['r1']['thread_id']),('acct-2-aaaa1111','acct-1-aaaa1111'))
         self.assertEqual({(row['kind'],row['title']) for row in self.provider.rows},{('任务','任务 aaaa1111')})
         self.assertEqual((self.provider.status['session_kind'],self.provider.status['unknown_effort'],self.provider.status['scan']['partial_records']),('任务',1,1))
+
+    def store(self,*rows):
+        path=self.root/'titles/conversation_summaries.db';path.parent.mkdir(exist_ok=True)
+        with sqlite3.connect(path) as db:
+            db.execute('CREATE TABLE IF NOT EXISTS conversation_summaries (conversation_id text, title text NOT NULL DEFAULT "", preview text NOT NULL DEFAULT "", parent_conversation_id text NOT NULL DEFAULT "", raw_summary text)')
+            db.executemany('INSERT INTO conversation_summaries(conversation_id,title,preview,parent_conversation_id,raw_summary) VALUES(?,?,?,?,?)',rows)
+        return path
+
+    def test_tasks_are_named_after_their_conversations(self):
+        main,child,lonely,blank='c1111111-aaaa','c2222222-aaaa','c3333333-aaaa','c4444444-aaaa'
+        ledger=lambda cid:hashlib.sha256(cid.encode()).hexdigest()
+        for cid in (main,child,lonely,blank):
+            self.write(f'acct-1/{ledger(cid)}.json',{'schema':1,'account':'acct-1','records':[entry('r-'+cid,1795000000000)]})
+        self.write('acct-1/0123456789abcdef.json',{'schema':1,'account':'acct-1','records':[entry('r-none',1795000000000)]})
+        titles=self.store((main,'  aero3  ','a preview that is not read','',None),(child,'','x',main,None),
+                          (lonely,'','x','c9999999-aaaa',None),(blank,'   ','x','',None))
+        self.provider=antigravity.Provider(self.root,titles);self.provider.refresh()
+        rows={row['response_id']:row for row in self.provider.rows}
+        self.assertEqual((rows['r-'+main]['title'],rows['r-'+main]['kind']),('aero3','任务'))
+        # A sub-agent's conversation has no name of its own; it goes by its parent's.
+        self.assertEqual((rows['r-'+child]['title'],rows['r-'+child]['kind']),('aero3 · 子代理','子代理'))
+        # A parent that is not in the store, a name that is blank, and a conversation the store does not know.
+        for cid in (lonely,blank):self.assertEqual(rows['r-'+cid]['title'],f'任务 {ledger(cid)[-8:]}')
+        self.assertEqual(rows['r-none']['title'],'任务 89abcdef')
+        self.assertEqual(self.provider.status['scan']['untitled_tasks'],3)
+        self.assertNotIn('titles_unavailable',self.provider.status['scan'])
+        # The store is read again once it changes.
+        self.store((lonely,'DNS routing','x','',None))
+        self.provider.refresh()
+        self.assertEqual({row['title'] for row in self.provider.rows if row['response_id']=='r-'+lonely},{'DNS routing'})
+        self.assertEqual(self.provider.status['scan']['untitled_tasks'],2)
+
+    def test_without_the_store_tasks_go_by_number(self):
+        self.write('acct-1/aaaa1111.json',{'schema':1,'account':'acct-1','records':[entry('r1',1795000000000)]})
+        self.provider=antigravity.Provider(self.root,self.root/'titles'/'missing.db');self.provider.refresh()
+        self.assertEqual({row['title'] for row in self.provider.rows},{'任务 aaaa1111'})
+        self.assertEqual((self.provider.status['scan']['untitled_tasks'],self.provider.status['scan']['titles_unavailable']),(1,1))
+        # A file that is not a store counts as none, and the usage is all there.
+        (self.root/'titles').mkdir(exist_ok=True);(self.root/'titles'/'broken.db').write_bytes(b'not a database at all')
+        self.provider=antigravity.Provider(self.root,self.root/'titles'/'broken.db');self.provider.refresh()
+        self.assertEqual((len(self.provider.rows),self.provider.status['scan']['titles_unavailable']),(1,1))
 
     def test_half_written_ledger_is_retried_not_dropped(self):
         self.write('acct-1/aaaa1111.json',{'schema':1,'account':'acct-1','records':[entry('r1',1795000000000)]})

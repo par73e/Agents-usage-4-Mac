@@ -98,6 +98,8 @@ export function coverageNotes({ provider, index = {}, result, caveats = [], form
     notes.push(`读取 ${number(index.file_count)} ${provider.fileWord}，索引 ${number(index.record_count)} ${provider.recordWord}。`);
     notes.push(`${provider.detailWord}起于 ${date(index.first)}。`);
     if (scan.untitled_sessions > 0) notes.push(`${number(scan.untitled_sessions)} 个会话没有标题记录，以会话 ID 显示。`);
+    if (scan.untitled_tasks > 0) notes.push(`${number(scan.untitled_tasks)} 个任务在 Anti Gravity 的对话列表里没有名字，以任务编号显示。`);
+    if (scan.titles_unavailable) notes.push("Anti Gravity 的对话列表暂时读不到，任务以编号显示。");
     if (scan.partial_records > 0) notes.push(`含 ${number(scan.partial_records)} 条被台账标记为不完整（partial）的记录。`);
   }
   if (scan.unreadable_files > 0) notes.push(`本轮有 ${number(scan.unreadable_files)} 个文件无法读取，保留之前成功索引的记录，稍后重试。`);

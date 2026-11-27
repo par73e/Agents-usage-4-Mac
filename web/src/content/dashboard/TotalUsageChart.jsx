@@ -47,6 +47,10 @@ export const TotalUsageChart = React.memo(function TotalUsageChart({ result, qui
   // Cache hit over the whole range: cached input over all tokens, where the
   // source says which input was cached.
   const cached = buckets.reduce((sum, bucket) => sum + bucket.cached, 0);
+  // Both figures below describe responses, so both are taken over the responses
+  // alone. Use from old logs is an estimate that names neither a response nor
+  // what was cached, and is left out of them.
+  const measured = buckets.reduce((sum, bucket) => sum + (bucket.recorded || 0), 0);
   const cacheKnown = buckets.some(bucket => bucket.cached + bucket.uncached > 0);
   const change = changePercent(total, comparison?.tokens);
   const before = comparison?.status === "ready" ? `${wallText(comparison.start)} ～ ${wallText(comparison.end)}` : "";
@@ -73,8 +77,8 @@ export const TotalUsageChart = React.memo(function TotalUsageChart({ result, qui
       renderPlot={plot => <><div className="usage-total-head"><div className="usage-model-legend">{legend.map(s => <span key={s.key}><i style={{ background: s.color }} /><span>{s.label}</span>{mode === "effort" && <strong title={`${exact(s.key === "estimated" ? estimated : efforts[s.key])} tokens`}>{percent(s.key === "estimated" ? estimated : efforts[s.key], total) ?? "0.0"}%</strong>}</span>)}</div>
         <div className="usage-total-stats" data-reviewed-rows>
           <span><strong>{exact(responses)}</strong> {provider.unit}</span>
-          <span>每次 <strong title={exact(total / Math.max(1, responses))}>{short(total / Math.max(1, responses))}</strong> tokens</span>
-          {cacheKnown && <span>缓存命中 <strong>{percent(cached, total) ?? "0.0"}%</strong></span>}
+          <span>每次 <strong title={exact(measured / Math.max(1, responses))}>{short(measured / Math.max(1, responses))}</strong> tokens</span>
+          {cacheKnown && <span>缓存命中 <strong>{percent(cached, measured) ?? "0.0"}%</strong></span>}
           {comparison?.status === "loading" ? <span className="usage-stat-quiet">正在对比上一时段…</span>
             : comparison?.status === "ready" && (change == null ? <span className="usage-stat-quiet" title={`上一时段 ${before} 没有记录`}>上一时段没有记录</span>
               : <span className={Math.abs(change) < 0.5 ? "is-flat" : change > 0 ? "is-up" : "is-down"} title={`上一时段 ${before}：${short(comparison.tokens)} tokens`}>

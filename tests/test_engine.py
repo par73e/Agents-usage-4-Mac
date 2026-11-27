@@ -36,6 +36,25 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(models['gpt-test']['efforts'],{'high':110,'low':110});self.assertEqual(models['other']['tokens'],110)
     def test_unknown_is_preserved_not_assigned_latest_context(self):
         self.write([usage(),context('t2','new-model','low')]);self.engine.refresh();r=self.query();self.assertEqual(r['models'][0]['name'],'unknown');self.assertEqual(r['models'][0]['efforts'],{'unknown':110})
+    def test_first_response_written_before_its_turn_context_gets_its_own_turns_model(self):
+        # Some versions of Codex write the first response of a turn a few lines before the turn's own context.
+        self.write([usage(),context(),usage('r2'),usage('r3',turn='t9'),context('t2','other','medium'),usage('r4',turn='t2')]);self.engine.refresh()
+        models={m['name']:m for m in self.query()['models']}
+        self.assertEqual((models['gpt-test']['tokens'],models['gpt-test']['efforts']),(220,{'high':220}))
+        # A response whose turn never says its model stays unknown, even though other turns do.
+        self.assertEqual((models['unknown']['tokens'],models['other']['tokens']),(110,110))
+        self.assertEqual(self.engine.status['scan']['attributed_after_their_context'],1)
+    def test_context_appended_in_a_later_scan_completes_the_response_stored_before_it(self):
+        with (self.root/'sessions'/'two.jsonl').open('w') as stream:stream.write(json.dumps(usage('s1',turn='t5'))+'\n')
+        self.engine.refresh()
+        self.assertEqual({m['name']:m['tokens'] for m in self.query()['models']},{'unknown':110})
+        with (self.root/'sessions'/'two.jsonl').open('a') as stream:stream.write(json.dumps(context('t5','late-model','low'))+'\n'+json.dumps(usage('s2',turn='t5'))+'\n')
+        self.engine.refresh()
+        self.assertEqual({m['name']:(m['tokens'],m['efforts']) for m in self.query()['models']},{'late-model':(220,{'low':220})})
+        # Reading the whole file again comes to the same figures.
+        (self.root/'sessions'/'two.jsonl').write_text(json.dumps(usage('s1',turn='t5'))+'\n'+json.dumps(context('t5','late-model','low'))+'\n'+json.dumps(usage('s2',turn='t5'))+'\n')
+        self.engine.refresh()
+        self.assertEqual({m['name']:(m['tokens'],m['efforts']) for m in self.query()['models']},{'late-model':(220,{'low':220})})
     def test_duplicate_across_files_and_same_file(self):
         events=[context(),usage(),usage()];self.write(events);self.write(events,'copy.jsonl','archived_sessions');self.engine.refresh();self.assertEqual(self.query()['response_count'],1)
     def test_conflicting_duplicate_same_file_excluded(self):

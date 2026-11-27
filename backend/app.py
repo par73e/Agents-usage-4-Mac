@@ -59,10 +59,10 @@ def local_source(key,status):
                        '缓存命中只计缓存读取；缓存写入按未命中缓存的输入计。',
                        '模型和推理强度来自台账的模型标签，不能独立证明服务端实际路由。',
                        '时间取台账记录自带的时间戳（timeBasis=planner-created）；台账不记录响应完成的时刻，也不提供推理 Token 明细。',
-                       '台账不含任务标题，按记录文件区分任务。',
+                       '每个记录文件是一个任务；任务名取自 Anti Gravity 的对话列表，列表里没有的以任务编号显示。',
                        '台账标记为不完整（partial）的记录照常计入，缺失的分项按 0 计，这些记录的用量可能偏低。',
                        '台账不含账户额度快照，不从 Token 用量换算额度。'],
-            'evidenceFlow':[{'kind':'source','title':'读取来源','detail':'只读扫描 Antigravity Pulse 的 usage-v1 台账；每个记录文件视为一个任务，不含同步状态文件。'},
+            'evidenceFlow':[{'kind':'source','title':'读取来源','detail':'只读扫描 Antigravity Pulse 的 usage-v1 台账，每个记录文件视为一个任务，不含同步状态文件；任务名取自 Anti Gravity 的对话列表，只读对话 ID、名字和父对话 ID。'},
                             {'kind':'method','title':'时间与分组','detail':BUCKETING}]}
 
 def export_snapshot(registry, write=False):
