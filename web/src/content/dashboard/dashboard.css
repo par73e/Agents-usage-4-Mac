@@ -80,11 +80,6 @@
 .usage-model-caption { display:flex; justify-content:space-between; gap:12px; font-size:11px; color:var(--secondary); padding-top:12px; }
 /* What the page shows below the filters: the charts first. The line of the selected range's total that stood here said what the totals card, its figures and the session picker already say. */
 .usage-results { padding-top:26px; }
-/* The display range of the charts on one line: a short name, the slider, and a way back to the whole range once it is narrowed. */
-.usage-zoom { display:flex; align-items:center; gap:16px; padding:2px 6px 18px; }
-.usage-zoom>div { flex:1; min-width:0; }
-.usage-zoom-reset { flex:none; font:inherit; font-size:11px; border:0; padding:2px 0; color:var(--secondary); cursor:pointer; background:none; }
-.usage-zoom-reset:hover { color:var(--text); }
 .usage-footer { margin-top:24px; padding:17px 2px; border-top:1px solid var(--border); font-size:11px; color:var(--secondary); }
 .usage-footer>div { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .usage-footer>div>span:last-child { margin-left:auto; }
@@ -112,7 +107,7 @@
 @keyframes usage-pop { from { opacity:.5; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
 @keyframes usage-spin { to { transform:rotate(360deg); } }
 @media (max-width:1050px) { .usage-color-mode { margin-left:0; } }
-@media (max-width:650px) { .usage-workspace { padding-top:20px; }.usage-topline { margin-bottom:20px; }.usage-topline h1 { font-size:24px; }.usage-topline p { font-size:11px; }.usage-filter-surface { padding:18px 16px 0; }.usage-view-controls { gap:15px; }.usage-color-mode { width:100%; }.usage-secondary-controls { flex-wrap:wrap; gap:14px; }.usage-session-popover { width:360px; left:-3px; }.usage-model-legend { gap:12px; }.usage-model-caption { flex-wrap:wrap; line-height:1.6; }.usage-model-total strong { font-size:17px; }.usage-footer>div>span:last-child { margin-left:0; flex-basis:100%; margin-top:6px; }.usage-zoom { gap:10px; } }
+@media (max-width:650px) { .usage-workspace { padding-top:20px; }.usage-topline { margin-bottom:20px; }.usage-topline h1 { font-size:24px; }.usage-topline p { font-size:11px; }.usage-filter-surface { padding:18px 16px 0; }.usage-view-controls { gap:15px; }.usage-color-mode { width:100%; }.usage-secondary-controls { flex-wrap:wrap; gap:14px; }.usage-session-popover { width:360px; left:-3px; }.usage-model-legend { gap:12px; }.usage-model-caption { flex-wrap:wrap; line-height:1.6; }.usage-model-total strong { font-size:17px; }.usage-footer>div>span:last-child { margin-left:0; flex-basis:100%; margin-top:6px; } }
 /* A phone window is too short for a list under its trigger: the list becomes a sheet under the top bar, like the date panel, with its own Done button. Only the rows scroll, so the search and Done stay in reach. */
 @media (max-width:650px) {
   .usage-session-popover { position:fixed; top:64px; left:12px; right:12px; width:auto; max-width:none; max-height:calc(100dvh - 80px); }

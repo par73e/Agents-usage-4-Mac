@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {exact, short, percent, roundCeiling, wallText, clockParts} from '../web/src/content/dashboard/format.js';
+import {createRequire} from 'node:module';
+const {getNiceTickValues} = createRequire(import.meta.url)('../web/node_modules/recharts');
 import {splitModelName, modelKey, modelTitle, modelId, groupModels, rankModels} from '../web/src/content/dashboard/models.js';
 import {previousRange, changePercent, quietRange, zoneMinute} from '../web/src/content/dashboard/range-compare.js';
 import {timeTicks, zonedTime, roundUp, axisName} from '../web/src/content/dashboard/time-ticks.js';
@@ -25,9 +27,16 @@ test('a count is written in full under one 万, and in 万 and 亿 above it',()=
 });
 
 test('the top of a value axis is a round number that is not below the tallest bar',()=>{
-  assert.equal(roundCeiling(91481768),100000000);assert.equal(roundCeiling(22500000),25000000);
-  assert.equal(roundCeiling(74693000),100000000,'75 is not one of the round steps');assert.equal(roundCeiling(25100000),50000000);assert.equal(roundCeiling(7500),10000);assert.equal(roundCeiling(20000000),20000000);
+  assert.equal(roundCeiling(91481768),100000000);assert.equal(roundCeiling(22500000),30000000);
+  assert.equal(roundCeiling(74693000),100000000,'75 is not one of the round steps');assert.equal(roundCeiling(25100000),30000000);
+  assert.equal(roundCeiling(7500),10000);assert.equal(roundCeiling(20000000),20000000);
+  assert.equal(roundCeiling(3000),3000);assert.equal(roundCeiling(3001),4000);assert.equal(roundCeiling(4999999),6000000);
   assert.equal(roundCeiling(0),1);assert.equal(roundCeiling(-5),1);
+  // Every end from 100 up is one the chart library spaces ticks evenly inside; a count of tokens is never smaller.
+  for (let power = 2; power < 9; power++) for (const step of [1, 2, 3, 4, 6, 10]) {
+    const top = step * 10 ** power, ticks = getNiceTickValues([0, top], 5, true);
+    assert.ok(ticks.every(tick => tick <= top), `${top}: a tick runs past the end`);
+  }
 });
 
 test('a model is the part of its name after the last slash',()=>{

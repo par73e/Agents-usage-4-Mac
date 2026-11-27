@@ -1,5 +1,6 @@
-// Limit drawn categories, not evidence or query precision. The existing zoom
-// slider keeps original bucket indices and restores exact buckets when close.
+// Limit drawn categories, not evidence or query precision: a long range is
+// drawn with bars that each hold several buckets. The window is a parameter so
+// that tests can pin how buckets are merged; the page always shows it whole.
 import { clockParts } from "./format.js";
 
 export const MAX_PLOT_BUCKETS = 120;

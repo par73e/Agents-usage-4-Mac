@@ -18,13 +18,15 @@ export function percent(part, whole, digits = 1) {
   return (part / whole * 100).toFixed(digits);
 }
 
-// The upper end of a value axis: the smallest round number, 1, 2, 2.5 or 5 times
-// a power of ten, that is not below the tallest bar. Ticks inside such an end
-// are round numbers too.
+// The upper end of a value axis: the smallest round number, 1, 2, 3, 4, 6 or 10
+// times a power of ten, that is not below the tallest bar. The chart library
+// spaces its ticks evenly inside exactly these ends. An end of 2.5 or 5 times a
+// power of ten would get ticks that run past it and are cut off, which leaves
+// the last gap shorter than the others.
 export function roundCeiling(value) {
   if (!(value > 0)) return 1;
   const unit = 10 ** Math.floor(Math.log10(value));
-  for (const step of [1, 2, 2.5, 5, 10]) if (step * unit >= value * (1 - 1e-9)) return step * unit;
+  for (const step of [1, 2, 3, 4, 6, 10]) if (step * unit >= value * (1 - 1e-9)) return step * unit;
 }
 
 // Wall-clock fields of a moment in a zone, zero-padded.

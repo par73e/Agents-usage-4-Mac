@@ -35,11 +35,11 @@ function useStableQuotaRows(rows, key) {
   }, [rows, key]);
 }
 
-function QuotaWindow({ window, result, zoom, sourceRows, threshold, showGapBackground, onGapBackgroundChange, fullRange, onShowRecorded, onResetZoom }) {
+function QuotaWindow({ window, result, sourceRows, threshold, showGapBackground, onGapBackgroundChange, onShowRecorded }) {
   const ref = useRef(null), [width, setWidth] = useState(600);
   const points = useStableQuotaRows(window.points, "snapshot_id");
   const recoveries = useStableQuotaRows(window.events, "id");
-  const view = useMemo(() => quotaView({ ...window, points, events: recoveries }, result.bins, zoom), [window, points, recoveries, result.bins, zoom]);
+  const view = useMemo(() => quotaView({ ...window, points, events: recoveries }, result.bins, [0, Math.max(0, result.bins.length - 1)]), [window, points, recoveries, result.bins]);
   // The plot is on the page only while the view holds a record.
   const plotted = view.points.length > 0;
   useEffect(() => {
@@ -71,7 +71,6 @@ function QuotaWindow({ window, result, zoom, sourceRows, threshold, showGapBackg
   // A latest record a day old or more, on a chart that reaches into the present,
   // is said out loud: its percentage is not the balance of today.
   const staleDays = points.length && view.end > Date.now() - DAY ? daysAgo(points.at(-1).timestamp_ms) : 0;
-  const inRange = fullRange && points.some(point => point.timestamp_ms >= fullRange.start_ms && point.timestamp_ms < fullRange.end_ms);
   const heading = <div className="usage-quota-latest" data-reviewed-rows><strong>{latest ? `${latest.remaining_percent}%` : "—"}</strong><span>{latest ? "最近一次观测" : "所选范围内没有记录"}</span>
     {staleDays >= 1 && <span className="usage-stale-chip">已 {staleDays} 天没有新记录</span>}</div>;
   const scopeFilters = [{ label: "时间范围", value: `${dateLabel(view.start, result.timezone)} 至 ${dateLabel(view.end, result.timezone)}` }, { label: "时区", value: result.timezone }, { label: "范围", value: "按账户统计 · 不按会话筛选" }];
@@ -79,11 +78,10 @@ function QuotaWindow({ window, result, zoom, sourceRows, threshold, showGapBackg
   if (!view.points.length) return <DataComponent id={id} queryId="quota" kind="custom" title="账户剩余额度" description={description}
     variant="card" className="usage-quota-card usage-quota-card-quiet" displayRows={[]} sourceRows={evidence} scopeFilters={scopeFilters} headerControls={heading}>
     <div className="usage-quota-quiet">
-      {inRange ? <p>图表现在显示的这段范围里没有额度记录。{onResetZoom && <Button onClick={onResetZoom}>显示整个时间范围</Button>}</p>
-        : view.context ? <>
-          <p>所选时间范围内没有额度记录。最近一次观测是 {dateLabel(view.context.timestamp, result.timezone)}，剩余 {view.context.remaining_percent}%。</p>
-          {onShowRecorded && <Button onClick={() => onShowRecorded({ start: zoneMinute(view.context.timestamp_ms - 6 * DAY, result.timezone), end: zoneMinute(view.context.timestamp_ms + DAY / 2, result.timezone) })}>查看那前后的 7 天</Button>}
-        </> : <p>所选时间范围内没有额度记录，日志里也还没有更早的观测。出现记录后会自动显示；不会从 Token 用量换算百分比。</p>}
+      {view.context ? <>
+        <p>所选时间范围内没有额度记录。最近一次观测是 {dateLabel(view.context.timestamp, result.timezone)}，剩余 {view.context.remaining_percent}%。</p>
+        {onShowRecorded && <Button onClick={() => onShowRecorded({ start: zoneMinute(view.context.timestamp_ms - 6 * DAY, result.timezone), end: zoneMinute(view.context.timestamp_ms + DAY / 2, result.timezone) })}>查看那前后的 7 天</Button>}
+      </> : <p>所选时间范围内没有额度记录，日志里也还没有更早的观测。出现记录后会自动显示；不会从 Token 用量换算百分比。</p>}
     </div>
   </DataComponent>;
   return <DataComponent id={id} queryId="quota" kind="custom" title="账户剩余额度" description={description}
@@ -134,7 +132,7 @@ export function QuotaUnavailable({ provider }) {
     {provider.label} 的本地记录不含账户额度，不做展示，也不从 Token 用量换算百分比。</p>;
 }
 
-export function QuotaCharts({ result, zoom, sourceRows, fullRange, onShowRecorded, onResetZoom }) {
+export function QuotaCharts({ result, sourceRows, onShowRecorded }) {
   const quota = result.quota;
   const windows = (quota?.windows || []).filter(window => window.window_minutes !== 30 * 1440);
   const [showGapBackground, setShowGapBackground] = useState(() => {
@@ -143,8 +141,8 @@ export function QuotaCharts({ result, zoom, sourceRows, fullRange, onShowRecorde
   useEffect(() => { try { localStorage.setItem("codex-usage:quota-gap-background", String(showGapBackground)); } catch {} }, [showGapBackground]);
   if (quota?.windows?.length && !windows.length) return null;
   return <section className="usage-quota-section" aria-label="账户额度变化">
-    {windows.length ? windows.map(window => <QuotaWindow key={window.key} window={window} result={result} zoom={zoom} sourceRows={sourceRows} threshold={quota.gap_threshold_ms}
-      showGapBackground={showGapBackground} onGapBackgroundChange={setShowGapBackground} fullRange={fullRange} onShowRecorded={onShowRecorded} onResetZoom={onResetZoom} />)
+    {windows.length ? windows.map(window => <QuotaWindow key={window.key} window={window} result={result} sourceRows={sourceRows} threshold={quota.gap_threshold_ms}
+      showGapBackground={showGapBackground} onGapBackgroundChange={setShowGapBackground} onShowRecorded={onShowRecorded} />)
       : <section className="usage-rank-card" aria-label="账户剩余额度"><div className="usage-rank-head"><h2>账户剩余额度</h2></div><p className="usage-rank-empty">这个时间范围内没有可用的额度快照。日志中出现额度记录后会自动显示；不会从 Token 用量换算百分比。</p></section>}
   </section>;
 }
