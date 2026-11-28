@@ -91,8 +91,18 @@ function useRangeValueLayout({
       maximumBoundWidth: maximumBoundRef.current?.offsetWidth ?? 0,
       showBounds,
     });
+    // A centred label has the two values at the edges of the control on either side of it. It is
+    // centred only when the range is wide enough for it to keep a gap from both; a narrow range
+    // leaves it at its place at the start, with the lower value after it and the upper one at the
+    // far edge.
+    const span = control.clientWidth * (endPercent - startPercent) / 100;
+    const middle = control.clientWidth * (startPercent + endPercent) / 200;
+    const centredWidth = Math.min(inlineLabelWidth, Math.max(0, span - 32));
+    const edge = 12;  // the control's own padding, --data-slider-control-padding
     next.centerInlineLabel = inlineLabelWidth > 0
-      && control.clientWidth * startPercent / 100 < 12 + inlineLabelWidth + 12;
+      && control.clientWidth * startPercent / 100 < 12 + inlineLabelWidth + 12
+      && middle - centredWidth / 2 >= edge + lowerOutput.offsetWidth + 12
+      && middle + centredWidth / 2 <= control.clientWidth - edge - upperOutput.offsetWidth - 12;
     setLayout((current) => current
       && Object.keys(next).every((key) => current[key] === next[key]) ? current : next);
   }), [controlRef, endPercent, labelRef, layoutKey, lowerValueRef,

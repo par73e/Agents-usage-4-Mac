@@ -171,36 +171,49 @@ export function layoutRangeSliderLabels({
   const insideUpper = upperPoint - gap - safeUpperWidth;
   const outsideLower = lowerPoint - gap - safeLowerWidth;
   const outsideUpper = upperPoint + gap;
-  const insideFits = insideLower >= contentStart
-    && insideUpper - (insideLower + safeLowerWidth) >= gap;
+  const contentEnd = safeWidth - padding;
   const lowerFitsOutside = outsideLower >= contentStart;
-  const upperFitsOutside = outsideUpper + safeUpperWidth <= safeWidth - padding;
+  const upperFitsOutside = outsideUpper + safeUpperWidth <= contentEnd;
+  const insideLowerLeft = fitLabel(insideLower, contentStart, contentEnd - safeLowerWidth);
+  const insideUpperLeft = fitLabel(insideUpper, contentStart, contentEnd - safeUpperWidth);
+  // Where the two values may stand, the most natural place first, and when each place may be used.
+  // A place is used only when both values lie within the control, after the label when there is
+  // one, with a gap between them. A value that stands between the thumbs keeps that gap from
+  // them too, so that no value is ever written under a thumb.
+  const room = (lowerLeft, upperLeft) => lowerLeft >= contentStart
+    && lowerLeft + safeLowerWidth + gap <= upperLeft
+    && upperLeft + safeUpperWidth <= contentEnd;
+  const lowerBetween = lowerLeft => lowerLeft >= lowerPoint + gap && lowerLeft + safeLowerWidth + gap <= upperPoint;
+  const upperBetween = upperLeft => upperLeft >= lowerPoint + gap && upperLeft + safeUpperWidth + gap <= upperPoint;
+  const betweenThumbs = (lowerLeft, upperLeft) => lowerBetween(lowerLeft) && upperBetween(upperLeft);
+  const places = [
+    // Both between the thumbs.
+    [insideLowerLeft, insideUpperLeft, "inside", "inside", room(insideLower, insideUpper)],
+    // Each on its own side of the thumbs.
+    [outsideLower, outsideUpper, "outside", "outside", lowerFitsOutside && upperFitsOutside],
+    // One between the thumbs, the other beyond the thumb on the far side.
+    [insideLowerLeft, outsideUpper, "inside", "outside",
+      upperFitsOutside && room(insideLowerLeft, outsideUpper) && lowerBetween(insideLowerLeft)],
+    [outsideLower, insideUpperLeft, "outside", "inside",
+      lowerFitsOutside && room(outsideLower, insideUpper) && upperBetween(insideUpper)],
+    // Both between the thumbs, the lower one after the label: a range that is wide but starts there.
+    [insideLowerLeft, insideUpperLeft, "inside", "inside", room(insideLowerLeft, insideUpperLeft) && betweenThumbs(insideLowerLeft, insideUpperLeft)],
+    // Both beyond one thumb, in their order: the thumbs are close together and one side is too short.
+    [upperPoint + gap, upperPoint + gap + safeLowerWidth + gap, "outside", "outside",
+      room(upperPoint + gap, upperPoint + gap + safeLowerWidth + gap)],
+    [lowerPoint - gap - safeUpperWidth - gap - safeLowerWidth, lowerPoint - gap - safeUpperWidth, "outside", "outside",
+      room(lowerPoint - gap - safeUpperWidth - gap - safeLowerWidth, lowerPoint - gap - safeUpperWidth)],
+  ];
+  const place = places.find(([, , , , allowed]) => allowed);
   let lowerLeft;
   let upperLeft;
   let lowerPlacement;
   let upperPlacement;
 
-  if (insideFits) {
-    lowerLeft = insideLower;
-    upperLeft = insideUpper;
-    lowerPlacement = "inside";
-    upperPlacement = "inside";
-  } else if (lowerFitsOutside && upperFitsOutside) {
-    lowerLeft = outsideLower;
-    upperLeft = outsideUpper;
-    lowerPlacement = "outside";
-    upperPlacement = "outside";
-  } else if (upperFitsOutside) {
-    lowerLeft = fitLabel(insideLower, contentStart, safeWidth - padding - safeLowerWidth);
-    upperLeft = outsideUpper;
-    lowerPlacement = "inside";
-    upperPlacement = "outside";
-  } else if (lowerFitsOutside) {
-    lowerLeft = outsideLower;
-    upperLeft = fitLabel(insideUpper, contentStart, safeWidth - padding - safeUpperWidth);
-    lowerPlacement = "outside";
-    upperPlacement = "inside";
+  if (place) {
+    [lowerLeft, upperLeft, lowerPlacement, upperPlacement] = place;
   } else {
+    // Nothing else fits: the values go to the two ends of the control, where they never meet.
     lowerLeft = contentStart;
     upperLeft = Math.max(
       contentStart + safeLowerWidth + gap,
